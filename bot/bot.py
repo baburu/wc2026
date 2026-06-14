@@ -1,6 +1,7 @@
 import os
+import asyncio
+import aiohttp
 import discord
-import requests
 
 TOKEN = os.environ.get("DISCORD_BOT_TOKEN")
 LEADERBOARD_URL = os.environ.get("LEADERBOARD_URL", "https://wc2026-leaderboard.onrender.com/post")
@@ -22,13 +23,17 @@ async def on_message(message):
         return
 
     if message.content.strip().lower() == "-lead":
+        msg = await message.channel.send("⏳ Fetching leaderboard...")
         try:
-            response = requests.get(LEADERBOARD_URL, timeout=15)
-            data = response.json()
-            if not data.get("ok"):
-                await message.channel.send("❌ Failed to fetch leaderboard.")
+            async with aiohttp.ClientSession() as session:
+                async with session.get(LEADERBOARD_URL, timeout=aiohttp.ClientTimeout(total=60)) as response:
+                    data = await response.json()
+                    if not data.get("ok"):
+                        await msg.edit(content="❌ Failed to fetch leaderboard.")
+                    else:
+                        await msg.delete()
         except Exception as e:
-            await message.channel.send(f"❌ Error: {e}")
+            await msg.edit(content=f"❌ Error: {e}")
 
 
 client.run(TOKEN)
