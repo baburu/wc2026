@@ -57,7 +57,7 @@ def card():
     cx = 200
 
     # Beige username (matches card background)
-    draw.text((cx, 500), username, font=font_name, fill=(242, 235, 213, 255), anchor="mm")
+    draw.text((cx, 505), username, font=font_name, fill=(242, 235, 213, 255), anchor="mm")
 
     # Burgundy score (matches card border)
     draw.text((cx, 555), f"SCORE: {score} PTS", font=font_score, fill=(100, 20, 40, 255), anchor="mm")
