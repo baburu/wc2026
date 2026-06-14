@@ -51,13 +51,16 @@ def card():
 
     draw = ImageDraw.Draw(card_img)
 
-    font_name  = get_font(28)
+    font_name  = get_font(32)
     font_score = get_font(16)
 
     cx = 200
 
-    draw.text((cx, 518), username,            font=font_name,  fill=(255, 255, 255, 255), anchor="mm")
-    draw.text((cx, 548), f"SCORE: {score} PTS", font=font_score, fill=(255, 255, 255, 255), anchor="mm")
+    # Beige username (matches card background)
+    draw.text((cx, 500), username, font=font_name, fill=(242, 235, 213, 255), anchor="mm")
+
+    # Burgundy score (matches card border)
+    draw.text((cx, 555), f"SCORE: {score} PTS", font=font_score, fill=(100, 20, 40, 255), anchor="mm")
 
     out = io.BytesIO()
     card_img.convert("RGB").save(out, format="PNG", optimize=True)
@@ -66,7 +69,6 @@ def card():
 
 @app.route("/debug")
 def debug():
-    """Check which fonts are available on this system"""
     import subprocess
     result = subprocess.run(["fc-list"], capture_output=True, text=True)
     return f"<pre>{result.stdout}</pre>"
