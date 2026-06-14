@@ -8,8 +8,27 @@ app = Flask(__name__)
 
 GITHUB_BASE = "https://raw.githubusercontent.com/baburu/wc2026/refs/heads/main/cards/cropped"
 BG_URL = f"{GITHUB_BASE}/01.png"
+LEADERBOARD_URL = "https://wc2026-leaderboard.onrender.com/preview"
+
+# Discord username (lowercase) -> Sheet name
+NAME_MAP = {
+    "baburubaburu": "Babu",
+    "hotaru":       "Hotarou",
+    "ziggsawpuzzle":"Ziggs",
+    "trel":         "Trel",
+    "scorpy":       "Scorpy",
+    "pyrospower":   "Pyro",
+    "edna_san":     "Edna",
+    "bimbastic":    "BimBim",
+    "squally":      "Squally",
+    "hypetrain":    "Hype",
+    "sunnyrainlight":"Sunny",
+    "d4_akumah":    "D4",
+    "nyte_zero":    "Nyte",
+}
 
 _image_cache = {}
+_score_cache = {}
 
 def fetch_image(url):
     if url in _image_cache:
@@ -19,6 +38,21 @@ def fetch_image(url):
     img = Image.open(io.BytesIO(resp.content)).convert("RGBA")
     _image_cache[url] = img
     return img.copy()
+
+def fetch_score(discord_username):
+    sheet_name = NAME_MAP.get(discord_username.lower())
+    if not sheet_name:
+        return "0"
+    try:
+        resp = requests.get(LEADERBOARD_URL, timeout=10)
+        resp.raise_for_status()
+        data = resp.json()
+        for player in data.get("players", []):
+            if player["name"] == sheet_name:
+                return str(player["score"])
+    except Exception:
+        pass
+    return "0"
 
 def get_font(size):
     font_paths = [
@@ -42,8 +76,9 @@ def card():
     if avatar_num < 2 or avatar_num > 31:
         abort(400, "Avatar must be between 2 and 31")
 
-    username = request.args.get("user", "Player")[:20].upper()
-    score    = request.args.get("score", "0")
+    username = request.args.get("user", "Player")[:20]
+    score    = fetch_score(username)
+    username = username.upper()
 
     try:
         bg     = fetch_image(BG_URL)
@@ -52,11 +87,8 @@ def card():
         abort(502, f"Could not fetch images: {e}")
 
     card_img = Image.new("RGBA", (400, 600), (0, 0, 0, 0))
-    # 1. paste background
     card_img.paste(bg, (0, 0))
-    # 2. paste avatar on top
     card_img.paste(avatar, (0, 0), avatar)
-    # 3. re-paste the bottom bar from background so avatar never bleeds into text area
     bar_region = bg.crop((0, 500, 400, 600))
     card_img.paste(bar_region, (0, 500))
 
@@ -67,8 +99,8 @@ def card():
 
     cx = 200
 
-    draw.text((cx, 509), username,              font=font_name,  fill=(242, 235, 213, 255), anchor="mm")
-    draw.text((cx, 554), f"SCORE: {score} PTS", font=font_score, fill=(100, 20, 40, 255),   anchor="mm")
+    draw.text((cx, 518), username,              font=font_name,  fill=(242, 235, 213, 255), anchor="mm")
+    draw.text((cx, 550), f"SCORE: {score} PTS", font=font_score, fill=(100, 20, 40, 255),   anchor="mm")
 
     out = io.BytesIO()
     card_img.convert("RGB").save(out, format="PNG", optimize=True)
