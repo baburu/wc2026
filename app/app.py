@@ -99,8 +99,8 @@ def card():
 
     cx = 200
 
-    draw.text((cx, 518), username,              font=font_name,  fill=(242, 235, 213, 255), anchor="mm")
-    draw.text((cx, 550), f"SCORE: {score} PTS", font=font_score, fill=(100, 20, 40, 255),   anchor="mm")
+    draw.text((cx, 512), username,              font=font_name,  fill=(242, 235, 213, 255), anchor="mm")
+    draw.text((cx, 554), f"SCORE: {score} PTS", font=font_score, fill=(100, 20, 40, 255),   anchor="mm")
 
     out = io.BytesIO()
     card_img.convert("RGB").save(out, format="PNG", optimize=True)
