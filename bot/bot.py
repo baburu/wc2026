@@ -180,14 +180,14 @@ async def on_message(message):
             await msg.edit(content=f"❌ Error: {e}")
 
     # --- New match stats command ---
-    elif message.content.strip().lower().startswith("!match "):
+    elif message.content.strip().lower().startswith("-match "):
         if not API_FOOTBALL_KEY:
             await message.channel.send("❌ API_FOOTBALL_KEY is not set in environment variables.")
             return
 
-        team_name = message.content.strip()[7:].strip()  # everything after "!match "
+        team_name = message.content.strip()[7:].strip()  # everything after "-match "
         if not team_name:
-            await message.channel.send("❌ Usage: `!match <team name>` — e.g. `!match France`")
+            await message.channel.send("❌ Usage: `-match <team name>` — e.g. `-match France`")
             return
 
         msg = await message.channel.send(f"⏳ Searching for a match with **{team_name}**...")
