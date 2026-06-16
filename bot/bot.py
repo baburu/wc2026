@@ -1,7 +1,9 @@
 import os
+import asyncio
 from datetime import date
 import aiohttp
 import discord
+import praw
 
 TOKEN = os.environ.get("DISCORD_BOT_TOKEN")
 LEADERBOARD_URL = os.environ.get("LEADERBOARD_URL", "https://wc2026-leaderboard.onrender.com/post")
@@ -12,6 +14,13 @@ API_FOOTBALL_BASE = f"https://{API_FOOTBALL_HOST}"
 
 WC_LEAGUE_ID = 1
 WC_SEASON = 2026
+
+# Initialize Reddit client securely using official API credentials
+reddit = praw.Reddit(
+    client_id=os.environ.get("REDDIT_CLIENT_ID"),
+    client_secret=os.environ.get("REDDIT_CLIENT_SECRET"),
+    user_agent="discord:soccer-replays-bot:v1.0 (by /u/anonymous)",
+)
 
 intents = discord.Intents.default()
 intents.message_content = True
@@ -254,7 +263,7 @@ def build_lineup_embed(data: dict) -> discord.Embed:
 
 
 # ──────────────────────────────────────────────
-# -standings
+# -standings [group]
 # ──────────────────────────────────────────────
 async def fetch_standings():
     async with aiohttp.ClientSession(headers=api_headers()) as session:
@@ -271,12 +280,18 @@ async def fetch_standings():
     return standings, "ok"
 
 
-def build_standings_embeds(standings: list) -> list:
+def build_standings_embeds(standings: list, search_group: str = None) -> list:
     embeds = []
     for group in standings:
-        if not group:
+        if not group or not isinstance(group, list):
             continue
+        
         group_name = group[0].get("group", "Group")
+        
+        # Filter logic if the user requests a specific group
+        if search_group and search_group.lower() not in group_name.lower():
+            continue
+
         embed = discord.Embed(title=f"🏆 WC 2026 — {group_name}", color=0xe74c3c)
         rows = []
         for t in group:
@@ -297,7 +312,7 @@ def build_standings_embeds(standings: list) -> list:
 
 
 # ──────────────────────────────────────────────
-# -bracket
+# -bracket [round]
 # ──────────────────────────────────────────────
 async def fetch_bracket():
     async with aiohttp.ClientSession(headers=api_headers()) as session:
@@ -320,13 +335,17 @@ async def fetch_bracket():
     return rounds, "ok"
 
 
-def build_bracket_embeds(rounds: dict) -> list:
+def build_bracket_embeds(rounds: dict, search_round: str = None) -> list:
     round_order = ["Round of 32", "Round of 16", "Quarter-finals", "Semi-finals", "3rd Place Final", "Final"]
     embeds = []
 
     for rnd_label in round_order:
         key = next((k for k in rounds if rnd_label.lower() in k.lower()), None)
         if not key:
+            continue
+
+        # Filter logic if the user requests a specific round structure
+        if search_round and search_round.lower() not in key.lower():
             continue
 
         matches = rounds[key]
@@ -356,54 +375,50 @@ def build_bracket_embeds(rounds: dict) -> list:
 
 
 # ──────────────────────────────────────────────
-# -replays <team>  — scrape r/soccer
+# -replays <team>
 # ──────────────────────────────────────────────
-REDDIT_HEADERS = {"User-Agent": "Mozilla/5.0 (compatible; DiscordBot/1.0)"}
 REPLAY_KEYWORDS = ["goal:", "goal |", "highlight", "match thread"]
 VIDEO_DOMAINS = ["streamable.com", "youtube.com", "youtu.be", "v.redd.it"]
 
 
 async def fetch_replays(team_name: str):
-    url = "https://www.reddit.com/r/soccer/new.json"
+    loop = asyncio.get_event_loop()
 
-    async with aiohttp.ClientSession(headers=REDDIT_HEADERS) as session:
-        async with session.get(url, params={"limit": 100}) as r:
-            if r.status != 200:
-                return None, "no_results"
-            data = await r.json()
+    # Offload the blocking synchronous PRAW API request to an executor thread
+    def query_reddit():
+        subreddit = reddit.subreddit("soccer")
+        return list(subreddit.new(limit=100))
 
-    posts = data.get("data", {}).get("children", [])
+    try:
+        posts = await loop.run_in_executor(None, query_reddit)
+    except Exception:
+        return None, "no_results"
+
     results = []
-
     for post in posts:
-        p = post["data"]
-        title = p.get("title", "")
-        post_url = p.get("url", "")
-        permalink = "https://reddit.com" + p.get("permalink", "")
+        title = post.title
+        post_url = post.url
+        permalink = f"https://reddit.com{post.permalink}"
 
-        # Must mention the team name
         if team_name.lower() not in title.lower():
             continue
 
-        # Must look like a goal or highlight post
         title_low = title.lower()
         if not any(kw in title_low for kw in REPLAY_KEYWORDS):
             continue
 
-        # Use direct video link if available, otherwise reddit post
         is_video = any(domain in post_url for domain in VIDEO_DOMAINS)
         link = post_url if is_video else permalink
 
         results.append({
             "title": title,
             "url": link,
-            "score": p.get("score", 0),
+            "score": post.score,
         })
 
     if not results:
         return None, "no_results"
 
-    # Sort by upvotes, return top 5
     results.sort(key=lambda x: x["score"], reverse=True)
     return results[:5], "ok"
 
@@ -420,7 +435,7 @@ def build_replays_embed(team_name: str, replays: list) -> discord.Embed:
             value=f"👍 {r['score']} upvotes",
             inline=False
         )
-    embed.set_footer(text="Source: r/soccer — No API key needed")
+    embed.set_footer(text="Source: r/soccer via official Reddit API")
     return embed
 
 
@@ -498,37 +513,63 @@ async def on_message(message):
         except Exception as e:
             await msg.edit(content=f"❌ Error: {e}")
 
-    # ── -standings ──
-    elif low == "-standings":
+    # ── -standings [group] ──
+    elif low.startswith("-standings"):
         if not API_FOOTBALL_KEY:
             await message.channel.send("❌ `API_FOOTBALL_KEY` env variable not set.")
             return
-        msg = await message.channel.send("⏳ Fetching WC 2026 standings...")
+
+        search_query = content[10:].strip() or None
+        loading_msg = "⏳ Fetching specific group standings..." if search_query else "⏳ Fetching WC 2026 standings..."
+        msg = await message.channel.send(loading_msg)
+        
         try:
             data, status = await fetch_standings()
             if status == "no_data":
                 await msg.edit(content="❌ No standings data available yet.")
                 return
-            embeds = build_standings_embeds(data)
+                
+            embeds = build_standings_embeds(data, search_group=search_query)
             await msg.delete()
+            
+            if not embeds:
+                if search_query:
+                    await message.channel.send(f"❌ Could not find a group matching **{search_query}**.")
+                else:
+                    await message.channel.send("❌ Error formatting standing chunks.")
+                return
+
             for i in range(0, len(embeds), 10):
                 await message.channel.send(embeds=embeds[i:i+10])
         except Exception as e:
             await msg.edit(content=f"❌ Error: {e}")
 
-    # ── -bracket ──
-    elif low == "-bracket":
+    # ── -bracket [round] ──
+    elif low.startswith("-bracket"):
         if not API_FOOTBALL_KEY:
             await message.channel.send("❌ `API_FOOTBALL_KEY` env variable not set.")
             return
-        msg = await message.channel.send("⏳ Fetching WC 2026 bracket...")
+
+        search_query = content[8:].strip() or None
+        loading_msg = "⏳ Fetching specific round matches..." if search_query else "⏳ Fetching WC 2026 bracket..."
+        msg = await message.channel.send(loading_msg)
+        
         try:
             data, status = await fetch_bracket()
             if status == "no_data":
                 await msg.edit(content="❌ Knockout bracket not available yet (group stage may still be ongoing).")
                 return
-            embeds = build_bracket_embeds(data)
+                
+            embeds = build_bracket_embeds(data, search_round=search_query)
             await msg.delete()
+            
+            if not embeds:
+                if search_query:
+                    await message.channel.send(f"❌ Could not find a knockout stage matching **{search_query}**.")
+                else:
+                    await message.channel.send("❌ Error formatting bracket chunks.")
+                return
+
             for i in range(0, len(embeds), 10):
                 await message.channel.send(embeds=embeds[i:i+10])
         except Exception as e:
@@ -536,6 +577,9 @@ async def on_message(message):
 
     # ── -replays <team> ──
     elif low.startswith("-replays "):
+        if not os.environ.get("REDDIT_CLIENT_ID") or not os.environ.get("REDDIT_CLIENT_SECRET"):
+            await message.channel.send("❌ Reddit API environment variables are not configured.")
+            return
         team_name = content[9:].strip()
         if not team_name:
             await message.channel.send("❌ Usage: `-replays <team>` — e.g. `-replays France`")
