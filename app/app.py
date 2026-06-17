@@ -11,7 +11,7 @@ LEADERBOARD_URL = "https://wc2026-leaderboard.onrender.com/preview"
 
 # Valid background keys → filenames in GitHub
 BG_NAMES = {
-    "default": "01.png",
+    "default": "base.png",
     "gc":      "gc.png",
     "m":       "m.png",
 }
