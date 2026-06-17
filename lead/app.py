@@ -28,9 +28,11 @@ def fetch_leaderboard(name_col, score_col):
     players = []
 
     for row in reader:
-        # Skip rows that don't have enough columns for this leaderboard
-        if len(row) <= score_col:
-            continue
+        # Pad row so Google Sheets' trimmed CSV never causes an index error
+        required_len = max(name_col, score_col) + 1
+        if len(row) < required_len:
+            row += [""] * (required_len - len(row))
+
         name = row[name_col].strip()
         score_raw = row[score_col].strip()
 
@@ -87,6 +89,7 @@ def post_route_for(board_key):
         except Exception as e:
             return jsonify({"ok": False, "error": str(e)}), 500
 
+    handler.__name__ = f"post_handler_{board_key}"  # Fix: unique name per route
     return handler
 
 
@@ -100,6 +103,7 @@ def preview_route_for(board_key):
         except Exception as e:
             return jsonify({"ok": False, "error": str(e)}), 500
 
+    handler.__name__ = f"preview_handler_{board_key}"  # Fix: unique name per route
     return handler
 
 
