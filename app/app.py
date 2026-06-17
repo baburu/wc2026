@@ -7,8 +7,14 @@ import os
 app = Flask(__name__)
 
 GITHUB_BASE = "https://raw.githubusercontent.com/baburu/wc2026/refs/heads/main/cards/cropped"
-BG_URL = f"{GITHUB_BASE}/01.png"
 LEADERBOARD_URL = "https://wc2026-leaderboard.onrender.com/preview"
+
+# Valid background keys → filenames in GitHub
+BG_NAMES = {
+    "default": "01.png",
+    "gc":      "gc.png",
+    "m":       "m.png",
+}
 
 # Discord username (lowercase) -> Sheet name
 NAME_MAP = {
@@ -96,8 +102,13 @@ def card():
     badges = [b for b in badges if b in VALID_BADGES]
     username = username.upper()
 
+    # Background: pick from BG_NAMES, fall back to default
+    bg_key = request.args.get("bg", "default").strip().lower()
+    bg_filename = BG_NAMES.get(bg_key, "01.png")
+    bg_url = f"{GITHUB_BASE}/{bg_filename}"
+
     try:
-        bg     = fetch_image(BG_URL)
+        bg     = fetch_image(bg_url)
         avatar = fetch_image(f"{GITHUB_BASE}/{avatar_num:02d}.png")
     except Exception as e:
         abort(502, f"Could not fetch images: {e}")
@@ -142,10 +153,11 @@ def card():
 @app.route("/warmup")
 def warmup():
     errors = []
-    try:
-        fetch_image(BG_URL)
-    except Exception as e:
-        errors.append(f"bg: {e}")
+    for bg_filename in BG_NAMES.values():
+        try:
+            fetch_image(f"{GITHUB_BASE}/{bg_filename}")
+        except Exception as e:
+            errors.append(f"bg {bg_filename}: {e}")
     for i in range(2, 32):
         try:
             fetch_image(f"{GITHUB_BASE}/{i:02d}.png")
@@ -162,7 +174,7 @@ def warmup():
 
 @app.route("/")
 def index():
-    return "WC2026 Card Service is running! Use /card?avatar=2&user=YourName&score=10"
+    return "WC2026 Card Service is running! Use /card?avatar=2&user=YourName&bg=gc"
 
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 5000))
