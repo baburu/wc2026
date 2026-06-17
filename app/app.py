@@ -66,6 +66,19 @@ def get_font(size):
             return ImageFont.truetype(path, size)
     return ImageFont.load_default(size=size)
 
+VALID_BADGES = {"m1", "m2", "m3"}
+
+# --- Badge layout config: edit these to resize/reposition the badge row ---
+BADGE_SIZE   = 40   # size (px) each badge is scaled into on the 400x600 card
+BADGE_GAP    = 14   # gap (px) between badges
+BADGE_LEFT_X = 45   # left margin (px) where the badge row starts
+BADGE_Y      = 420  # vertical center (px) of the badge row
+
+# Safety clamp so a typo'd BADGE_SIZE can't break the card layout
+BADGE_SIZE = max(16, min(BADGE_SIZE, 120))
+# ---------------------------------------------------------------------
+
+
 @app.route("/card")
 def card():
     try:
@@ -78,6 +91,9 @@ def card():
 
     username = request.args.get("user", "Player")[:20]
     score    = fetch_score(username)
+    raw_badges = request.args.get("badge", "")
+    badges = [b.strip().lower() for b in raw_badges.split(",") if b.strip()]
+    badges = [b for b in badges if b in VALID_BADGES]
     username = username.upper()
 
     try:
@@ -85,6 +101,13 @@ def card():
         avatar = fetch_image(f"{GITHUB_BASE}/{avatar_num:02d}.png")
     except Exception as e:
         abort(502, f"Could not fetch images: {e}")
+
+    badge_imgs = []
+    for b in badges:
+        try:
+            badge_imgs.append(fetch_image(f"{GITHUB_BASE}/{b}.png"))
+        except Exception:
+            pass  # missing/broken badge file shouldn't break the whole card
 
     card_img = Image.new("RGBA", (400, 600), (0, 0, 0, 0))
     card_img.paste(bg, (0, 0))
@@ -98,6 +121,15 @@ def card():
     font_score = get_font(16)
 
     cx = 200
+
+    if badge_imgs:
+        x = BADGE_LEFT_X
+        for img in badge_imgs:
+            resized = img.copy()
+            resized.thumbnail((BADGE_SIZE, BADGE_SIZE))
+            bw, bh = resized.size
+            card_img.paste(resized, (x, BADGE_Y - bh // 2), resized)
+            x += BADGE_SIZE + BADGE_GAP
 
     draw.text((cx, 508), username,              font=font_name,  fill=(242, 235, 213, 255), anchor="mm")
     draw.text((cx, 554), f"SCORE: {score} PTS", font=font_score, fill=(100, 20, 40, 255),   anchor="mm")
@@ -119,9 +151,14 @@ def warmup():
             fetch_image(f"{GITHUB_BASE}/{i:02d}.png")
         except Exception as e:
             errors.append(f"avatar {i}: {e}")
+    for badge in VALID_BADGES:
+        try:
+            fetch_image(f"{GITHUB_BASE}/{badge}.png")
+        except Exception as e:
+            errors.append(f"badge {badge}: {e}")
     if errors:
         return f"Done with errors: {errors}"
-    return "✅ All 31 images cached!"
+    return "✅ All images cached!"
 
 @app.route("/")
 def index():
