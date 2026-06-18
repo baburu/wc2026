@@ -1,5 +1,8 @@
 ### ✨ My Collection Gallery ✨
 
+Type on Discord ```-avatar number``` (e.g. ```-avatar 2```) 
+Then type ```-card```
+
 <table>
   <tr>
     <td align="center"><img src="../cards/cropped/02.png" width="140px"><br><sub>🌸 #02</sub></td>
