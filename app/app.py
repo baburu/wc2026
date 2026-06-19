@@ -33,7 +33,7 @@ NAME_MAP = {
     "pyrospower":   "Pyro",
     "edna_san":     "Edna",
     "bimbastic":    "BimBim",
-    "squally":      "Squally",
+    "squallyy":      "Squally",
     "hypetrain":    "Hype",
     "sunnyrainlight":"Sunny",
     "akuma5336": "D4",
