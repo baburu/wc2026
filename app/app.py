@@ -94,13 +94,15 @@ def get_font(size):
 VALID_BADGES = {"m1", "m2", "m3", "wc26"}
 
 # --- Badge layout config: edit these to resize/reposition the badge row ---
-BADGE_SIZE   = 100   # size (px) each badge is scaled into on the 400x600 card
-BADGE_GAP    = 5   # gap (px) between badges
+BADGE_SIZE   = 80    # width (px) each badge is scaled into on the 400x600 card
+BADGE_HEIGHT = 100   # height (px) each badge is scaled into on the 400x600 card
+BADGE_GAP    = 5    # gap (px) between badges
 BADGE_LEFT_X = 30   # left margin (px) where the badge row starts
 BADGE_Y      = 415  # vertical center (px) of the badge row
 
-# Safety clamp so a typo'd BADGE_SIZE can't break the card layout
+# Safety clamp
 BADGE_SIZE = max(16, min(BADGE_SIZE, 120))
+BADGE_HEIGHT = max(16, min(BADGE_HEIGHT, 140))
 # ---------------------------------------------------------------------
 
 
@@ -157,10 +159,10 @@ def card():
         x = BADGE_LEFT_X
         for img in badge_imgs:
             resized = img.copy()
-            resized.thumbnail((BADGE_SIZE, BADGE_SIZE))
+            resized.thumbnail((BADGE_SIZE, BADGE_HEIGHT))
             bw, bh = resized.size
             card_img.paste(resized, (x, BADGE_Y - bh // 2), resized)
-            x += BADGE_SIZE + BADGE_GAP
+            x += bw + BADGE_GAP  # use actual rendered width
 
     score_color = SCORE_COLORS.get(bg_key, SCORE_COLORS["default"])
 
