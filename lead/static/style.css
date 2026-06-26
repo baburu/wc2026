@@ -48,7 +48,6 @@ header::before {
 }
 
 .header-eyebrow {
-  font-family: 'DM Sans', sans-serif;
   font-size: 11px;
   font-weight: 600;
   letter-spacing: 0.15em;
@@ -65,9 +64,7 @@ header::before {
   color: var(--cream);
 }
 
-.header-title span {
-  color: var(--gold);
-}
+.header-title span { color: var(--gold); }
 
 .header-sub {
   margin-top: 0.75rem;
@@ -107,7 +104,7 @@ header::before {
   border-radius: 50% 50% 0 0 / 100% 100% 0 0;
 }
 
-/* ── Nav pills ── */
+/* ── Nav ── */
 nav {
   display: flex;
   justify-content: center;
@@ -117,7 +114,6 @@ nav {
 }
 
 .pill {
-  font-family: 'DM Sans', sans-serif;
   font-size: 12px;
   font-weight: 500;
   letter-spacing: 0.06em;
@@ -132,18 +128,71 @@ nav {
   transition: background 0.15s, color 0.15s, border-color 0.15s;
 }
 
-.pill:hover,
-.pill.active {
+.pill:hover, .pill.active {
   background: var(--pitch);
   color: var(--cream);
   border-color: var(--pitch);
 }
 
-/* ── Main content ── */
-main {
-  max-width: 600px;
+/* ── Content layout ── */
+.content-wrap {
+  display: flex;
+  align-items: flex-start;
+  gap: 2rem;
+  max-width: 980px;
   margin: 0 auto;
   padding: 2rem 1.25rem 4rem;
+}
+
+main {
+  flex: 1;
+  min-width: 0;
+}
+
+/* ── Card panel ── */
+aside#card-panel {
+  width: 220px;
+  flex-shrink: 0;
+  position: sticky;
+  top: 1.5rem;
+}
+
+.card-placeholder {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 2rem 1rem;
+  border: 1.5px dashed var(--sage);
+  border-radius: 12px;
+  color: var(--muted);
+  font-size: 13px;
+  text-align: center;
+  min-height: 280px;
+}
+
+.card-placeholder-icon { font-size: 1.5rem; }
+
+.card-inner {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.6rem;
+}
+
+.card-name {
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 1.3rem;
+  letter-spacing: 0.06em;
+  color: var(--ink);
+}
+
+.card-img {
+  width: 100%;
+  border-radius: 10px;
+  display: block;
+  box-shadow: 0 4px 16px rgba(26,58,42,0.15);
 }
 
 /* ── Section header ── */
@@ -172,13 +221,12 @@ main {
   border-radius: 4px;
 }
 
-/* ── Matchday tabs ── */
+/* ── Tabs ── */
 .tabs {
   display: flex;
   gap: 4px;
   margin-bottom: 1.25rem;
   border-bottom: 1.5px solid var(--sage);
-  padding-bottom: 0;
 }
 
 .tab {
@@ -202,11 +250,9 @@ main {
   font-weight: 600;
 }
 
-.tab:hover:not(.active) {
-  color: var(--ink-soft);
-}
+.tab:hover:not(.active) { color: var(--ink-soft); }
 
-/* ── Leaderboard table ── */
+/* ── Leaderboard ── */
 .leaderboard {
   width: 100%;
   border-collapse: collapse;
@@ -223,22 +269,17 @@ main {
   border-bottom: 1.5px solid var(--sage);
 }
 
-.leaderboard thead th:last-child {
-  text-align: right;
-}
+.leaderboard thead th:last-child { text-align: right; }
 
 .leaderboard tbody tr {
   border-bottom: 1px solid #e8ede5;
   transition: background 0.1s;
+  cursor: pointer;
 }
 
-.leaderboard tbody tr:hover {
-  background: rgba(26, 58, 42, 0.04);
-}
-
-.leaderboard tbody tr:last-child {
-  border-bottom: none;
-}
+.leaderboard tbody tr:hover { background: rgba(26, 58, 42, 0.04); }
+.leaderboard tbody tr.selected { background: rgba(26, 58, 42, 0.08); }
+.leaderboard tbody tr:last-child { border-bottom: none; }
 
 .leaderboard td {
   padding: 0.85rem 0.75rem;
@@ -261,7 +302,13 @@ main {
   font-weight: 500;
   font-size: 15px;
   color: var(--ink);
-  flex: 1;
+}
+
+.player-name.clickable {
+  color: var(--pitch);
+  text-decoration: underline;
+  text-decoration-color: var(--sage);
+  text-underline-offset: 3px;
 }
 
 .score-cell {
@@ -278,7 +325,7 @@ main {
   text-align: center;
 }
 
-/* ── Loading / error state ── */
+/* ── States ── */
 .state-msg {
   text-align: center;
   padding: 2.5rem 1rem;
@@ -288,18 +335,7 @@ main {
 
 .state-msg .icon { font-size: 2rem; margin-bottom: 0.5rem; display: block; }
 
-/* ── Footer ── */
-footer {
-  text-align: center;
-  padding: 2rem 1rem 3rem;
-  font-size: 12px;
-  color: var(--muted);
-  border-top: 1px solid var(--sage);
-  max-width: 600px;
-  margin: 0 auto;
-}
-
-/* ── Refresh button ── */
+/* ── Refresh ── */
 .refresh-wrap {
   display: flex;
   justify-content: flex-end;
@@ -325,7 +361,29 @@ footer {
 
 .refresh-btn:hover { color: var(--pitch); border-color: var(--pitch); }
 
-@media (max-width: 480px) {
+/* ── Footer ── */
+footer {
+  text-align: center;
+  padding: 2rem 1rem 3rem;
+  font-size: 12px;
+  color: var(--muted);
+  border-top: 1px solid var(--sage);
+  max-width: 980px;
+  margin: 0 auto;
+}
+
+/* ── Mobile ── */
+@media (max-width: 680px) {
+  .content-wrap {
+    flex-direction: column;
+  }
+
+  aside#card-panel {
+    width: 100%;
+    position: static;
+  }
+
+  .card-img { max-width: 260px; margin: 0 auto; }
   .player-name { font-size: 14px; }
   .score-cell { font-size: 1.2rem; }
 }

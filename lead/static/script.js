@@ -7,10 +7,60 @@ const ENDPOINTS = {
 
 const MEDALS = { 1: '🥇', 2: '🥈', 3: '🥉' };
 
+const CARD_URL = 'https://wc2026-i9es.onrender.com/card';
+
+// Sheet name -> { avatar, discord username for card URL }
+const PLAYER_INFO = {
+  'Babu':    { avatar: 29, user: 'baburubaburu' },
+  'Hotarou': { avatar: 28, user: 'houtarou' },
+  'Ziggs':   { avatar: 14, user: 'ziggssawpuzzle' },
+  'Trel':    { avatar: 25, user: 'trel' },
+  'Scorpy':  { avatar: 8,  user: 'scorpy' },
+  'Pyro':    { avatar: 12, user: 'pyrospower' },
+  'Edna':    { avatar: 26, user: 'edna_san' },
+  'BimBim':  { avatar: 21, user: 'bimbastic' },
+  'Squally': { avatar: 11, user: 'squallyy' },
+  'Hype':    { avatar: 18, user: 'hypetrain' },
+  'Sunny':   { avatar: 21, user: 'sunnyrainlight' },
+  'D4':      { avatar: 14, user: 'akuma5336' },
+  'Nyte':    { avatar: 8,  user: 'nyte_zero' },
+  'Pffq':    { avatar: 20, user: 'xenter0384' },
+};
+
 let activeBoard = 'lead';
+let selectedPlayer = null;
 
 function escHtml(s) {
   return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+function showCard(name) {
+  selectedPlayer = name;
+  const panel = document.getElementById('card-panel');
+  const info = PLAYER_INFO[name];
+
+  if (!info) {
+    panel.innerHTML = `<div class="card-placeholder"><p>No card found for ${escHtml(name)}</p></div>`;
+    return;
+  }
+
+  const url = `${CARD_URL}?avatar=${info.avatar}&user=${encodeURIComponent(info.user)}&bg=gc`;
+
+  panel.innerHTML = `
+    <div class="card-inner">
+      <div class="card-name">${escHtml(name)}</div>
+      <img
+        class="card-img"
+        src="${url}"
+        alt="${escHtml(name)}'s card"
+        onerror="this.parentElement.innerHTML='<div class=\\'card-placeholder\\'><p>Card unavailable</p></div>'"
+      />
+    </div>`;
+
+  // highlight selected row
+  document.querySelectorAll('.leaderboard tbody tr').forEach(tr => {
+    tr.classList.toggle('selected', tr.dataset.player === name);
+  });
 }
 
 function renderTable(players) {
@@ -22,10 +72,11 @@ function renderTable(players) {
     const rank = i + 1;
     const rankClass = rank <= 3 ? ` rank-${rank}` : '';
     const medal = MEDALS[rank] || '';
+    const isSelected = p.name === selectedPlayer ? ' selected' : '';
     return `
-      <tr>
+      <tr class="player-row${isSelected}" data-player="${escHtml(p.name)}">
         <td class="rank${rankClass}">${rank}</td>
-        <td class="player-name">${escHtml(p.name)}</td>
+        <td class="player-name clickable">${escHtml(p.name)}</td>
         <td class="medal">${medal}</td>
         <td class="score-cell">${p.score}</td>
       </tr>`;
@@ -45,6 +96,12 @@ function renderTable(players) {
     </table>`;
 }
 
+function attachRowClicks() {
+  document.querySelectorAll('.player-row').forEach(tr => {
+    tr.addEventListener('click', () => showCard(tr.dataset.player));
+  });
+}
+
 async function loadBoard(boardKey) {
   const container = document.getElementById('board-container');
   container.innerHTML = `<div class="state-msg"><span class="icon">⏳</span>Loading…</div>`;
@@ -55,11 +112,13 @@ async function loadBoard(boardKey) {
     const data = await res.json();
     if (!data.ok) throw new Error(data.error || 'Unknown error');
     container.innerHTML = renderTable(data.players);
+    attachRowClicks();
+    if (selectedPlayer) showCard(selectedPlayer);
   } catch (err) {
     container.innerHTML = `
       <div class="state-msg">
         <span class="icon">⚠️</span>
-        Couldn't load scores. Make sure the app is running and the endpoint is reachable.<br>
+        Couldn't load scores.<br>
         <small style="margin-top:6px;display:block;font-size:11px;opacity:0.7">${escHtml(err.message)}</small>
       </div>`;
   }
