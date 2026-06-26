@@ -5,80 +5,70 @@ import discord
 
 TOKEN = os.environ.get("DISCORD_BOT_TOKEN")
 LEADERBOARD_BASE_URL = "https://wc2026-leaderboard.onrender.com"
-API_FOOTBALL_KEY = os.environ.get("API_FOOTBALL_KEY")
 
-API_FOOTBALL_HOST = "v3.football.api-sports.io"
-API_FOOTBALL_BASE = f"https://{API_FOOTBALL_HOST}"
-
-WC_LEAGUE_ID = 1
-WC_SEASON = 2026
+# TheSportsDB Config (using public developer key '3')
+THE_SPORTSDB_BASE = "https://www.thesportsdb.com/api/v1/json/3"
+WORLD_CUP_ID = "4429"  # TheSportsDB's unique league ID for the FIFA World Cup
 
 intents = discord.Intents.default()
 intents.message_content = True
 client = discord.Client(intents=intents)
 
 
-def api_headers():
-    return {
-        "x-apisports-key": API_FOOTBALL_KEY,
-        "x-rapidapi-host": API_FOOTBALL_HOST,
-    }
-
-
 # ──────────────────────────────────────────────
-# SHARED: find fixture by team name
+# SHARED: find fixture by team name (TheSportsDB)
 # ──────────────────────────────────────────────
 async def find_fixture(session, team_name: str):
-    async with session.get(f"{API_FOOTBALL_BASE}/fixtures", params={"live": "all"}) as r:
-        fixtures = (await r.json()).get("response", [])
+    # 1. First, check if there are any live matches happening right now globally
+    async with session.get(f"{THE_SPORTSDB_BASE}/eventsday.php") as r:
+        if r.status == 200:
+            data = await r.json()
+            events = data.get("events", []) or []
+            
+            match = next(
+                (e for e in events if 
+                 team_name.lower() in e.get("strHomeTeam", "").lower() or 
+                 team_name.lower() in e.get("strAwayTeam", "").lower()), 
+                None
+            )
+            if match:
+                return match
 
-    match = next(
-        (f for f in fixtures if
-         team_name.lower() in f["teams"]["home"]["name"].lower() or
-         team_name.lower() in f["teams"]["away"]["name"].lower()),
-        None
-    )
-
-    if not match:
-        today = date.today().isoformat()
-        async with session.get(f"{API_FOOTBALL_BASE}/fixtures", params={"league": WC_LEAGUE_ID, "season": WC_SEASON, "date": today}) as r:
-            fixtures = (await r.json()).get("response", [])
-        match = next(
-            (f for f in fixtures if
-             team_name.lower() in f["teams"]["home"]["name"].lower() or
-             team_name.lower() in f["teams"]["away"]["name"].lower()),
-            None
-        )
-
-    if not match:
-        async with session.get(f"{API_FOOTBALL_BASE}/fixtures", params={"league": WC_LEAGUE_ID, "season": WC_SEASON, "next": 10}) as r:
-            fixtures = (await r.json()).get("response", [])
-        match = next(
-            (f for f in fixtures if
-             team_name.lower() in f["teams"]["home"]["name"].lower() or
-             team_name.lower() in f["teams"]["away"]["name"].lower()),
-            None
-        )
-
-    return match
+    # 2. If no active live match, look up upcoming/recent World Cup matches
+    async with session.get(f"{THE_SPORTSDB_BASE}/eventsnextleague.php?id={WORLD_CUP_ID}") as r:
+        if r.status == 200:
+            data = await r.json()
+            events = data.get("events", []) or []
+            
+            match = next(
+                (e for e in events if 
+                 team_name.lower() in e.get("strHomeTeam", "").lower() or 
+                 team_name.lower() in e.get("strAwayTeam", "").lower()), 
+                None
+            )
+            if match:
+                return match
+                
+    return None
 
 
-def format_match_line(f) -> str:
-    home = f["teams"]["home"]["name"]
-    away = f["teams"]["away"]["name"]
-    status = f["fixture"]["status"]["short"]
+def format_match_line(e) -> str:
+    home = e.get("strHomeTeam", "TBD")
+    away = e.get("strAwayTeam", "TBD")
+    
+    home_score = e.get("intHomeScore")
+    away_score = e.get("intAwayScore")
+    status = e.get("strStatus", "")
 
-    if status in ("1HF", "2HF", "HT", "ET", "P"):
-        hs = f["goals"]["home"]
-        as_ = f["goals"]["away"]
-        return f"🔴 **{home} {hs} - {as_} {away}** ({status})"
-    elif status == "FT":
-        hs = f["goals"]["home"]
-        as_ = f["goals"]["away"]
-        return f"🏁 **{home} {hs} - {as_} {away}** (FT)"
+    if home_score is not None and away_score is not None:
+        if status == "FT":
+            return f"🏁 **{home} {home_score} - {away_score} {away}** (FT)"
+        else:
+            return f"🔴 **{home} {home_score} - {away_score} {away}** (Live - {status})"
     else:
-        ts = f["fixture"]["timestamp"]
-        return f"⏳ **{home} vs {away}** (<t:{ts}:R>)"
+        date_str = e.get("dateEvent", "")
+        time_str = e.get("strTime", "")
+        return f"⏳ **{home} vs {away}** (Scheduled: {date_str} {time_str})"
 
 
 async def fetch_bracket_data():
@@ -189,7 +179,7 @@ async def on_message(message):
         msg = await message.channel.send(f"⏳ Fetching **{board['title']}** details...")
         
         try:
-            # 1. Fetch JSON data from your app's unbanned preview endpoint
+            # Fetch JSON data from your app's unbanned preview endpoint
             async with aiohttp.ClientSession() as session:
                 async with session.get(f"{LEADERBOARD_BASE_URL}{board['path']}", timeout=10) as response:
                     if response.status != 200:
@@ -206,7 +196,7 @@ async def on_message(message):
                 await msg.edit(content="ℹ️ No player entries found for this category.")
                 return
 
-            # 2. Build the exact ANSI color-coded text block locally
+            # Build the precise ANSI color-coded text block locally
             lines = ["▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬"]
             for rank, player in enumerate(players, start=1):
                 rank_str = f"{rank:02d}"
@@ -219,7 +209,6 @@ async def on_message(message):
             code_block = "```ansi\n" + "\n".join(lines) + "\n```"
             description = f"🏆 **{board['title']}** 🏆\n" + code_block
 
-            # 3. Ship the native embed via your stable bot connection
             embed = discord.Embed(
                 title="WORLD CUP 2026",
                 color=16763904,
@@ -232,20 +221,20 @@ async def on_message(message):
         except Exception as e:
             await msg.edit(content=f"❌ Network or processing error: {e}")
 
-    # ── Original commands continue below ──
+    # ── Live Schedule/Results Command (-live <team>) ──
     elif low.startswith("-live "):
         team_name = content[6:].strip()
         if not team_name:
             await message.channel.send("❌ Usage: `-live <team>` — e.g. `-live France`")
             return
 
-        msg = await message.channel.send(f"⏳ Searching API-Football for live fixture with **{team_name}**...")
+        msg = await message.channel.send(f"⏳ Searching TheSportsDB for fixture with **{team_name}**...")
         try:
-            async with aiohttp.ClientSession(headers=api_headers()) as session:
+            async with aiohttp.ClientSession() as session:
                 match = await find_fixture(session, team_name)
 
             if not match:
-                await msg.edit(content=f"❌ No live, today's, or next 10 fixtures found for **{team_name}**.")
+                await msg.edit(content=f"❌ No matching World Cup fixtures found for **{team_name}**.")
                 return
 
             await msg.delete()
@@ -253,6 +242,7 @@ async def on_message(message):
         except Exception as e:
             await msg.edit(content=f"❌ Error: {e}")
 
+    # ── Bracket Command (-bracket) ──
     elif content == "-bracket":
         msg = await message.channel.send("⏳ Fetching tournament bracket data...")
         try:
@@ -270,6 +260,7 @@ async def on_message(message):
         except Exception as e:
             await msg.edit(content=f"❌ Error: {e}")
 
+    # ── Bracket Round Command (-bracket <round>) ──
     elif low.startswith("-bracket "):
         round_filter = content[9:].strip()
         if not round_filter:
@@ -291,6 +282,7 @@ async def on_message(message):
         except Exception as e:
             await msg.edit(content=f"❌ Error: {e}")
 
+    # ── Replays Command (-replays <team>) ──
     elif low.startswith("-replays "):
         team_name = content[9:].strip()
         if not team_name:
