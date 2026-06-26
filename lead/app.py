@@ -1,8 +1,9 @@
 import os
 import csv
 import requests
+from datetime import datetime, timezone
 from io import StringIO
-from flask import Flask, jsonify, send_from_directory
+from flask import Flask, jsonify, send_from_directory, request
 
 app = Flask(__name__)
 
@@ -68,8 +69,14 @@ def build_embed(players, subtitle):
 
 
 def post_to_discord(players, subtitle):
+    now = datetime.now(timezone.utc).isoformat()
+    requester_ip = request.headers.get("X-Forwarded-For", request.remote_addr)
+    user_agent = request.headers.get("User-Agent", "unknown")
+    print(f"[WEBHOOK-POST] {now} | path={request.path} | ip={requester_ip} | ua={user_agent}", flush=True)
     payload = build_embed(players, subtitle)
     response = requests.post(DISCORD_WEBHOOK_URL, json=payload, timeout=10)
+    if response.status_code == 429:
+        print(f"[WEBHOOK-429] {now} | retry_after={response.headers.get('Retry-After')} | body={response.text}", flush=True)
     response.raise_for_status()
     return response.status_code
 
