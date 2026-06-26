@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>World Cup 2026 — Predictions League</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@400;500;600&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+
+  <header>
+    <div class="header-eyebrow">Friends predictions league</div>
+    <div class="ball">⚽</div>
+    <div class="header-title">World Cup<br><span>2026</span></div>
+    <div class="header-sub">Who called it best?</div>
+  </header>
+
+  <div class="grass"></div>
+
+  <nav>
+    <a href="index.html" class="pill active">Standings</a>
+    <a href="#" class="pill" onclick="alert('Coming soon! Stats page in the works 📊'); return false;">Stats</a>
+    <a href="#" class="pill" onclick="alert('Articles coming soon ✍️'); return false;">Articles</a>
+  </nav>
+
+  <main>
+    <div class="section-label">
+      <h2>General Classification</h2>
+      <span class="badge">Live</span>
+    </div>
+
+    <div class="tabs" role="tablist">
+      <button class="tab active" data-board="lead" role="tab">Overall</button>
+      <button class="tab" data-board="m1" role="tab">Matchday 1</button>
+      <button class="tab" data-board="m2" role="tab">Matchday 2</button>
+      <button class="tab" data-board="m3" role="tab">Matchday 3</button>
+    </div>
+
+    <div class="refresh-wrap">
+      <button class="refresh-btn" id="refresh-btn">
+        <span id="refresh-icon">↻</span> Refresh
+      </button>
+    </div>
+
+    <div id="board-container">
+      <div class="state-msg"><span class="icon">⏳</span>Loading scores…</div>
+    </div>
+  </main>
+
+  <footer>
+    World Cup 2026 Predictions League &mdash; good luck everyone ⚽
+  </footer>
+
+  <script src="script.js"></script>
+</body>
+</html>

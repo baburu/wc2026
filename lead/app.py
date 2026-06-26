@@ -2,7 +2,7 @@ import os
 import csv
 import requests
 from io import StringIO
-from flask import Flask, jsonify
+from flask import Flask, jsonify, send_from_directory
 
 app = Flask(__name__)
 
@@ -115,6 +115,11 @@ app.add_url_rule("/preview", "preview_lead", preview_route_for("lead"), methods=
 for key in ("m1", "m2", "m3"):
     app.add_url_rule(f"/{key}", f"post_{key}", post_route_for(key), methods=["GET", "POST"])
     app.add_url_rule(f"/{key}/preview", f"preview_{key}", preview_route_for(key), methods=["GET"])
+
+
+@app.route("/ui")
+def ui():
+    return send_from_directory("static", "index.html")
 
 
 @app.route("/", methods=["GET"])
