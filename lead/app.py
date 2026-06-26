@@ -28,7 +28,6 @@ def fetch_leaderboard(name_col, score_col):
     players = []
 
     for row in reader:
-        # Pad row so Google Sheets' trimmed CSV never causes an index error
         required_len = max(name_col, score_col) + 1
         if len(row) < required_len:
             row += [""] * (required_len - len(row))
@@ -36,13 +35,11 @@ def fetch_leaderboard(name_col, score_col):
         name = row[name_col].strip()
         score_raw = row[score_col].strip()
 
-        # Skip header or non-numeric scores
         if not name or not score_raw.lstrip("-").isdigit():
             continue
 
         players.append((name, int(score_raw)))
 
-    # Sort by score descending
     players.sort(key=lambda x: x[1], reverse=True)
     return players
 
@@ -52,7 +49,6 @@ def build_embed(players, subtitle):
 
     for rank, (name, score) in enumerate(players, start=1):
         rank_str = f"{rank:02d}"
-        # Bold blue rank, white name, bold yellow score
         line = f"\u001b[1;34m{rank_str}.\u001b[0m \u001b[0m{name:<15} \u001b[1;33m{score}\u001b[0m"
         lines.append(line)
 
@@ -89,7 +85,7 @@ def post_route_for(board_key):
         except Exception as e:
             return jsonify({"ok": False, "error": str(e)}), 500
 
-    handler.__name__ = f"post_handler_{board_key}"  # Fix: unique name per route
+    handler.__name__ = f"post_handler_{board_key}"
     return handler
 
 
@@ -103,12 +99,10 @@ def preview_route_for(board_key):
         except Exception as e:
             return jsonify({"ok": False, "error": str(e)}), 500
 
-    handler.__name__ = f"preview_handler_{board_key}"  # Fix: unique name per route
+    handler.__name__ = f"preview_handler_{board_key}"
     return handler
 
 
-# /post stays as the route for -lead (General Classification), unchanged from before.
-# /m1, /m2, /m3 are the new commands' routes.
 app.add_url_rule("/post", "post_lead", post_route_for("lead"), methods=["GET", "POST"])
 app.add_url_rule("/preview", "preview_lead", preview_route_for("lead"), methods=["GET"])
 
@@ -120,6 +114,11 @@ for key in ("m1", "m2", "m3"):
 @app.route("/ui")
 def ui():
     return send_from_directory("static", "index.html")
+
+
+@app.route("/ui/<path:filename>")
+def static_files(filename):
+    return send_from_directory("static", filename)
 
 
 @app.route("/", methods=["GET"])
