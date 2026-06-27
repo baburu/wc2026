@@ -140,6 +140,7 @@ async function loadBoard(boardKey) {
   }
 }
 
+// ── True Synchronous Network Preloader ──
 function triggerBackgroundPreload() {
   const players = Object.keys(PLAYER_INFO);
   const totalPlayers = players.length;
@@ -152,38 +153,57 @@ function triggerBackgroundPreload() {
   if (!progressContainer || !progressBarFill || !progressPercentText) return;
 
   progressContainer.classList.remove('hidden');
+
+  // Shared function to update the progress bar ONLY when things are complete
+  function handleItemProcessed() {
+    preloadedCount++;
+    const currentPercentage = Math.round((preloadedCount / totalPlayers) * 100);
+    
+    progressBarFill.style.width = `${currentPercentage}%`;
+    progressPercentText.innerText = `${currentPercentage}%`;
+
+    if (preloadedCount === totalPlayers) {
+      setTimeout(() => {
+        progressContainer.style.opacity = '0';
+        setTimeout(() => {
+          progressContainer.classList.add('hidden');
+        }, 400); 
+      }, 1200); 
+    }
+  }
   
   players.forEach((name, index) => {
     setTimeout(() => {
       const info = PLAYER_INFO[name];
-      if (info && !PERMANENT_IMAGE_CACHE[name]) {
+      
+      // If already cached by a click event earlier, skip the download hook and increment progress immediately
+      if (PERMANENT_IMAGE_CACHE[name]) {
+        handleItemProcessed();
+        return;
+      }
+
+      if (info) {
         const url = `${CARD_URL}?avatar=${info.avatar}&user=${encodeURIComponent(info.user)}&bg=gc`;
         const imgEl = new Image();
         imgEl.className = "card-img";
+        
+        // CRITICAL FIX: Increment the bar ONLY when the network file successfully finishes downloading
+        imgEl.onload = function() {
+          console.log(`📡 Cached successfully: ${name}`);
+          handleItemProcessed();
+        };
+        
+        // Increment progress even on error to prevent the bar from hanging forever
+        imgEl.onerror = function() {
+          console.warn(`⚠️ Failed to preload card for: ${name}`);
+          handleItemProcessed();
+        };
+
         imgEl.src = url;
         imgEl.alt = `${name}'s card`;
-        imgEl.onerror = function() {
-          this.parentElement.innerHTML = '<div class="card-placeholder"><p>Card unavailable</p></div>';
-        };
         PERMANENT_IMAGE_CACHE[name] = imgEl;
       }
-
-      preloadedCount++;
-      const currentPercentage = Math.round((preloadedCount / totalPlayers) * 100);
-      
-      progressBarFill.style.width = `${currentPercentage}%`;
-      progressPercentText.innerText = `${currentPercentage}%`;
-
-      if (preloadedCount === totalPlayers) {
-        setTimeout(() => {
-          progressContainer.style.opacity = '0';
-          setTimeout(() => {
-            progressContainer.classList.add('hidden');
-          }, 400); 
-        }, 1200); 
-      }
-
-    }, index * 250);
+    }, index * 250); // Keeps the staggered request flow safe for free-tier servers
   });
 }
 
