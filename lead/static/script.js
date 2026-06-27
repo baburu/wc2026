@@ -28,6 +28,9 @@ const PLAYER_INFO = {
   'Pffq':    { avatar: 20, user: 'xenter0384' },
 };
 
+// Global memory registry to prevent the browser from garbage collecting preloaded cards
+const PERMANENT_IMAGE_CACHE = {};
+
 let activeBoard = 'lead';
 let selectedPlayer = null;
 
@@ -45,18 +48,27 @@ function showCard(name) {
     return;
   }
 
-  const url = `${CARD_URL}?avatar=${info.avatar}&user=${encodeURIComponent(info.user)}&bg=gc`;
+  // If this specific player's image layout doesn't exist in cache memory, build it now
+  if (!PERMANENT_IMAGE_CACHE[name]) {
+    const url = `${CARD_URL}?avatar=${info.avatar}&user=${encodeURIComponent(info.user)}&bg=gc`;
+    const imgEl = new Image();
+    imgEl.className = "card-img";
+    imgEl.src = url;
+    imgEl.alt = `${name}'s card`;
+    imgEl.onerror = function() {
+      this.parentElement.innerHTML = '<div class="card-placeholder"><p>Card unavailable</p></div>';
+    };
+    PERMANENT_IMAGE_CACHE[name] = imgEl;
+  }
 
   panel.innerHTML = `
     <div class="card-inner">
       <div class="card-name">${escHtml(name)}</div>
-      <img
-        class="card-img"
-        src="${url}"
-        alt="${escHtml(name)}'s card"
-        onerror="this.parentElement.innerHTML='<div class=\\'card-placeholder\\'><p>Card unavailable</p></div>'"
-      />
+      <div class="card-img-holder"></div>
     </div>`;
+
+  // Insert the permanently preserved image object right into our active holder element
+  panel.querySelector('.card-img-holder').appendChild(PERMANENT_IMAGE_CACHE[name]);
 
   // highlight selected row
   document.querySelectorAll('.leaderboard tbody tr').forEach(tr => {
@@ -113,25 +125,9 @@ async function loadBoard(boardKey) {
     const data = await res.json();
     if (!data.ok) throw new Error(data.error || 'Unknown error');
     
-    // 1. Render the main dashboard table layout
     container.innerHTML = renderTable(data.players);
     attachRowClicks();
     if (selectedPlayer) showCard(selectedPlayer);
-
-    // 2. STAGGERED PRELOADER SEQUENCE: Silently caches players one-by-one
-    console.log("🏁 Leaderboard loaded! Kicking off card preloader sequence...");
-    const players = Object.keys(PLAYER_INFO);
-    players.forEach((name, index) => {
-      setTimeout(() => {
-        const info = PLAYER_INFO[name];
-        if (info) {
-          const preloadImg = new Image();
-          preloadImg.src = `${CARD_URL}?avatar=${info.avatar}&user=${encodeURIComponent(info.user)}&bg=gc`;
-          console.log(`📡 Preloaded card in background for: ${name}`);
-        }
-      }, index * 300); // 300ms pause spacing stops Render from choking
-    });
-
   } catch (err) {
     container.innerHTML = `
       <div class="state-msg">
@@ -140,6 +136,32 @@ async function loadBoard(boardKey) {
         <small style="margin-top:6px;display:block;font-size:11px;opacity:0.7">${escHtml(err.message)}</small>
       </div>`;
   }
+}
+
+// ── Background Cache Preloader Execution Sequence ──
+function triggerBackgroundPreload() {
+  console.log("🏁 Initializing card preloader memory registry sequence...");
+  const players = Object.keys(PLAYER_INFO);
+  
+  players.forEach((name, index) => {
+    setTimeout(() => {
+      const info = PLAYER_INFO[name];
+      if (info && !PERMANENT_IMAGE_CACHE[name]) {
+        const url = `${CARD_URL}?avatar=${info.avatar}&user=${encodeURIComponent(info.user)}&bg=gc`;
+        const imgEl = new Image();
+        imgEl.className = "card-img";
+        imgEl.src = url;
+        imgEl.alt = `${name}'s card`;
+        imgEl.onerror = function() {
+          this.parentElement.innerHTML = '<div class="card-placeholder"><p>Card unavailable</p></div>';
+        };
+        
+        // Lock image object straight into RAM dictionary before appending anywhere
+        PERMANENT_IMAGE_CACHE[name] = imgEl;
+        console.log(`📡 Memory Lock applied in background for: ${name}`);
+      }
+    }, index * 300); // Staggering protects your free-tier Render server from overloading
+  });
 }
 
 document.querySelectorAll('.tab').forEach(tab => {
@@ -155,5 +177,8 @@ document.getElementById('refresh-btn').addEventListener('click', () => {
   loadBoard(activeBoard);
 });
 
-// Kick off initial call
+// Run immediate leaderboard setup
 loadBoard('lead');
+
+// Fire the staggered preloader once immediately on landing page load
+setTimeout(triggerBackgroundPreload, 1200);
