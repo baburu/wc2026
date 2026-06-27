@@ -360,20 +360,13 @@ async function loadPredictions() {
     const rows = csvText.split(/\r?\n/).map(row => row.split(','));
     if (rows.length < 3) throw new Error("Spreadsheet contains empty data");
 
-    // 🔍 Case-Insensitive & Quote-Stripping Name Cleaner
-    // Resolves potential invisible spaces, casing differences, or double quotes in Google Sheets CSVs
-    function cleanName(str) {
-      if (!str) return '';
-      return str.toLowerCase().replace(/[^a-z0-9]/g, '');
-    }
-
     // 🔍 Dynamic Header Finder:
-    // Scan the first 10 rows to locate which row actually contains 'Babu' (player names)
+    // Scan the first 10 rows to locate the row containing player names
     let headerRow = null;
     let headerRowIdx = -1;
     for (let r = 0; r < Math.min(rows.length, 10); r++) {
       const row = rows[r];
-      const hasBabu = row.some(cell => cell && cleanName(cell) === 'babu');
+      const hasBabu = row.some(cell => cell && cell.trim() === 'Babu');
       if (hasBabu) {
         headerRow = row;
         headerRowIdx = r;
@@ -389,14 +382,9 @@ async function loadPredictions() {
     // Safely maps each player name to their exact column index in the sheet
     const players = [];
     for (let c = 0; c < headerRow.length; c++) {
-      const val = headerRow[c] ? cleanName(headerRow[c]) : '';
-      
-      // Match the cleaned spreadsheet header name to our player keys
-      for (let originalKey in PLAYER_INFO) {
-        if (cleanName(originalKey) === val) {
-          players.push({ name: originalKey, colIndex: c });
-          break;
-        }
+      const val = headerRow[c] ? headerRow[c].trim() : '';
+      if (PLAYER_INFO[val]) {
+        players.push({ name: val, colIndex: c });
       }
     }
 
