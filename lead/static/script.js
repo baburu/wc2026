@@ -12,6 +12,10 @@ const SCORING_SHEET_CSV_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1v
 const MEDALS = { 1: '🥇', 2: '🥈', 3: '🥉' };
 const CARD_URL = 'https://wc2026-i9es.onrender.com/card';
 
+// 🔄 CACHE BUSTING VERSION: Increment this number (e.g. '1.0.1', '1.0.2', etc.) 
+// to instantly force all users to fetch new cards when scores or designs update.
+const CARD_VERSION = '1.0.0';
+
 const PLAYER_INFO = {
   'Babu':    { avatar: 29, user: 'baburubaburu' },
   'Hotarou': { avatar: 28, user: 'houtarou' },
@@ -94,7 +98,8 @@ function showCard(name) {
   let imgEl = vault ? vault.querySelector(`[data-preload-user="${name}"]`) : null;
 
   if (!imgEl) {
-    const url = `${CARD_URL}?avatar=${info.avatar}&user=${encodeURIComponent(info.user)}&bg=gc`;
+    // URL includes dynamic card version query parameter
+    const url = `${CARD_URL}?avatar=${info.avatar}&user=${encodeURIComponent(info.user)}&bg=gc&v=${CARD_VERSION}`;
     imgEl = new Image();
     imgEl.className = "card-img";
     imgEl.setAttribute('data-preload-user', name);
@@ -206,7 +211,8 @@ function preloadOne(name, vault) {
       return;
     }
 
-    const url = `${CARD_URL}?avatar=${info.avatar}&user=${encodeURIComponent(info.user)}&bg=gc`;
+    // URL includes dynamic card version query parameter
+    const url = `${CARD_URL}?avatar=${info.avatar}&user=${encodeURIComponent(info.user)}&bg=gc&v=${CARD_VERSION}`;
     const imgEl = new Image();
     imgEl.className = "card-img";
     imgEl.setAttribute('data-preload-user', name);
@@ -296,3 +302,13 @@ const wakePingPromise = fetch('https://wc2026-i9es.onrender.com/', { mode: 'no-c
 Promise.all([leadBoardPromise, wakePingPromise]).then(() => {
   triggerBackgroundPreload();
 });
+
+// 🛠️ Service Worker Registration 
+// This registers the background process responsible for caching the cards.
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('/sw.js')
+      .then(reg => console.log('Service Worker registered successfully:', reg.scope))
+      .catch(err => console.warn('Service Worker registration failed:', err));
+  });
+}
