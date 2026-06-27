@@ -186,11 +186,13 @@ nav {
 /* ── Content layout ── */
 .content-wrap {
   display: flex;
+  justify-content: center; /* 👈 Centers both the leaderboard and card panel horizontally */
   align-items: flex-start;
   gap: 2rem;
-  max-width: 1300px; /* 👈 Increased to allow widescreen layouts on your page */
+  max-width: 1300px; 
   margin: 0 auto;
   padding: 2rem 1.25rem 4rem;
+  transition: max-width 0.25s ease-in-out;
 }
 
 #view-standings {
@@ -199,7 +201,7 @@ nav {
 }
 
 #view-predictions {
-  max-width: 1200px; /* 👈 Allows predictions to expand wider to fit player columns */
+  max-width: 1500px; /* 👈 Allows predictions to expand wider to fit player columns */
   width: 100%;
 }
 

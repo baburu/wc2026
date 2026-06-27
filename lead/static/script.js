@@ -416,3 +416,29 @@ async function loadPredictions() {
       </div>`;
   }
 }
+
+
+// ── Predictions Tab Navigation and Flex Parser Logic ──
+
+const btnStandings = document.getElementById('btn-standings');
+const btnPredictions = document.getElementById('btn-predictions');
+const viewStandings = document.getElementById('view-standings');
+const viewPredictions = document.getElementById('view-predictions');
+const cardPanel = document.getElementById('card-panel'); // 👈 1. Grab the card panel element
+
+btnStandings.addEventListener('click', () => {
+  btnStandings.classList.add('active');
+  btnPredictions.classList.remove('active');
+  viewStandings.style.display = 'block';
+  viewPredictions.style.display = 'none';
+  cardPanel.style.display = 'block'; // 👈 2. Show the card panel when on Standings
+});
+
+btnPredictions.addEventListener('click', () => {
+  btnPredictions.classList.add('active');
+  btnStandings.classList.remove('active');
+  viewStandings.style.display = 'none';
+  viewPredictions.style.display = 'block';
+  cardPanel.style.display = 'none'; // 👈 3. Hide the card panel when on Predictions
+  loadPredictions();
+});
