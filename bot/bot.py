@@ -201,10 +201,13 @@ async def on_message(message):
             from datetime import date
             async with aiohttp.ClientSession() as session:
                 data = await hl_get(session, "/matches", {"date": today, "leagueId": WC_LEAGUE_ID})
-            if not data or not data.get("data"):
+            if not data:
                 await msg.edit(content="ℹ️ No World Cup matches today.")
                 return
-            matches = data["data"]
+            matches = data.get("data") if isinstance(data, dict) else data
+            if not matches:
+                await msg.edit(content="ℹ️ No World Cup matches today.")
+                return
             embed = discord.Embed(title=f"⚽ World Cup 2026 — {today}", color=0x1a3a2a)
             for m in matches:
                 home = m.get("homeTeam", {}).get("name", "TBD")
@@ -247,10 +250,13 @@ async def on_message(message):
         try:
             async with aiohttp.ClientSession() as session:
                 data = await hl_get(session, "/matches/live", {"leagueId": WC_LEAGUE_ID})
-            if not data or not data.get("data"):
+            if not data:
                 await msg.edit(content="ℹ️ No live World Cup matches right now.")
                 return
-            matches = data["data"]
+            matches = data.get("data") if isinstance(data, dict) else data
+            if not matches:
+                await msg.edit(content="ℹ️ No live World Cup matches right now.")
+                return
             if team_filter:
                 matches = [
                     m for m in matches
@@ -291,12 +297,19 @@ async def on_message(message):
                 (date.today() + timedelta(days=1)).isoformat(),
             ]
             found = None
+            # Clear cache to avoid stale data
+            _cache.clear()
             async with aiohttp.ClientSession() as session:
                 for search_date in dates:
                     data = await hl_get(session, "/matches", {"date": search_date, "leagueId": WC_LEAGUE_ID})
-                    if not data or not data.get("data"):
+                    if not data:
                         continue
-                    for m in data["data"]:
+                    matches_list = data.get("data") if isinstance(data, dict) else data
+                    if not matches_list:
+                        continue
+                    for m in matches_list:
+                        if not isinstance(m, dict):
+                            continue
                         home = m.get("homeTeam", {}).get("name", "").lower()
                         away = m.get("awayTeam", {}).get("name", "").lower()
                         if team_name.lower() in home or team_name.lower() in away:
