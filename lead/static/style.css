@@ -201,6 +201,37 @@ aside#card-panel {
   box-shadow: 0 4px 16px rgba(26,58,42,0.15);
 }
 
+/* ── Live Win Rate Stats Badge ── */
+.card-stat-badge {
+  margin-top: 0.4rem;
+  background: var(--pitch-mid);
+  border: 1px solid var(--sage-dim);
+  border-radius: 6px;
+  padding: 6px 14px;
+  text-align: center;
+  width: 100%;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+}
+
+.stat-label {
+  display: block;
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--sage);
+  line-height: 1.2;
+}
+
+.stat-value {
+  display: block;
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 1.6rem;
+  color: var(--gold);
+  line-height: 1.1;
+  margin-top: 2px;
+}
+
 /* ── Section header ── */
 .section-label {
   display: flex;

@@ -6,8 +6,10 @@ const ENDPOINTS = {
   m4:   '/m4/preview', 
 };
 
-const MEDALS = { 1: '🥇', 2: '🥈', 3: '🥉' };
+// 💎 Fully configured Google Sheets Scoring Data Stream URL:
+const SCORING_SHEET_CSV_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vT8fEdr0djoTa4bc8diSdwH2xSDJ4JTlNgHUWho8lQ5btMR9Joe3sXhZPP72oTSE9MBdoYKrY4DlFl9/pub?gid=865998988&single=true&output=csv';
 
+const MEDALS = { 1: '🥇', 2: '🥈', 3: '🥉' };
 const CARD_URL = 'https://wc2026-i9es.onrender.com/card';
 
 const PLAYER_INFO = {
@@ -29,9 +31,51 @@ const PLAYER_INFO = {
 
 let activeBoard = 'lead';
 let selectedPlayer = null;
+let cachedWinRates = {}; // Memory bank tracking accuracy: { 'Babu': '65.15%' }
 
 function escHtml(s) {
   return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+// Dynamic Google Sheets Matrix Parser Engine
+async function fetchLiveWinRates() {
+  try {
+    const response = await fetch(SCORING_SHEET_CSV_URL);
+    if (!response.ok) return;
+    const csvText = await response.text();
+    
+    // Split into dimensional lines and compute rows safely
+    const rows = csvText.split(/\r?\n/).map(row => row.split(','));
+    if (rows.length < 77) return;
+
+    // Row index 2 tracks player structural layout columns (C3:S3)
+    const headerRow = rows[2];
+    // Row index 76 houses final sheet calculations (=AVERAGE percentages)
+    const winRateRow = rows[76];
+
+    headerRow.forEach((colValue, idx) => {
+      const cleanName = colValue.trim();
+      if (PLAYER_INFO[cleanName] && winRateRow[idx]) {
+        let rate = winRateRow[idx].trim();
+        // Convert to percentage form factor if sheet drops bare float decimals
+        if (!rate.includes('%') && !isNaN(rate) && rate !== '') {
+          rate = (parseFloat(rate) * 100).toFixed(2) + '%';
+        }
+        cachedWinRates[cleanName] = rate;
+      }
+    });
+    console.log("📊 Live Win Rates Synced:", cachedWinRates);
+    
+    // Live update open stats badge instantly if user has a card already up
+    if (selectedPlayer) {
+      const activeBadgeVal = document.getElementById('stat-val-node');
+      if (activeBadgeVal && cachedWinRates[selectedPlayer]) {
+        activeBadgeVal.innerText = cachedWinRates[selectedPlayer];
+      }
+    }
+  } catch (err) {
+    console.warn("⚠️ Syncing live sheet win-rates failed:", err);
+  }
 }
 
 function showCard(name) {
@@ -47,10 +91,8 @@ function showCard(name) {
     return;
   }
 
-  // 1. Check if the element exists in our permanent invisible vault
   let imgEl = vault ? vault.querySelector(`[data-preload-user="${name}"]`) : null;
 
-  // 2. Fallback: build on-demand if it hasn't finished preloading yet
   if (!imgEl) {
     const url = `${CARD_URL}?avatar=${info.avatar}&user=${encodeURIComponent(info.user)}&bg=gc`;
     imgEl = new Image();
@@ -58,29 +100,30 @@ function showCard(name) {
     imgEl.setAttribute('data-preload-user', name);
     imgEl.src = url;
     imgEl.alt = `${name}'s card`;
-    imgEl.onerror = function() {
-      this.parentElement.innerHTML = '<div class="card-placeholder"><p>Card unavailable</p></div>';
-    };
     if (vault) vault.appendChild(imgEl);
   }
 
-  // 3. Keep layout controls safe while resetting the container
   const progressContainer = document.getElementById('preload-progress-container');
   panel.innerHTML = '';
   
   if (progressContainer) panel.appendChild(progressContainer);
   if (vault) panel.appendChild(vault);
 
-  // 4. Render layout frames
+  // Extract prediction data or show loading spacer state
+  const rateValue = cachedWinRates[name] || '⏳ Syncing...';
+
   const innerLayout = document.createElement('div');
   innerLayout.className = 'card-inner';
   innerLayout.innerHTML = `
     <div class="card-name">${escHtml(name)}</div>
     <div class="card-img-holder"></div>
+    <div class="card-stat-badge">
+      <span class="stat-label">Prediction Accuracy</span>
+      <span class="stat-value" id="stat-val-node">${escHtml(rateValue)}</span>
+    </div>
   `;
   panel.appendChild(innerLayout);
 
-  // 5. Clone image straight from the vault so the browser keeps the source node painted in RAM
   const visibleClone = imgEl.cloneNode(true);
   panel.querySelector('.card-img-holder').appendChild(visibleClone);
 
@@ -151,7 +194,6 @@ async function loadBoard(boardKey) {
   }
 }
 
-// ── Diagnostic 60ms Fast-Stagger DOM Vault Preloader Engine ──
 function triggerBackgroundPreload() {
   const players = Object.keys(PLAYER_INFO);
   const totalPlayers = players.length;
@@ -166,8 +208,6 @@ function triggerBackgroundPreload() {
 
   progressContainer.classList.remove('hidden');
 
-  console.log("🚀 Starting card preload sync loop...");
-
   function handleItemProcessed() {
     preloadedCount++;
     const currentPercentage = Math.round((preloadedCount / totalPlayers) * 100);
@@ -176,7 +216,6 @@ function triggerBackgroundPreload() {
     progressPercentText.innerText = `${currentPercentage}%`;
 
     if (preloadedCount === totalPlayers) {
-      console.log("🏁 All 14 cards successfully anchored into layout memory!");
       setTimeout(() => {
         progressContainer.style.opacity = '0';
         setTimeout(() => {
@@ -197,28 +236,15 @@ function triggerBackgroundPreload() {
 
       if (info) {
         const url = `${CARD_URL}?avatar=${info.avatar}&user=${encodeURIComponent(info.user)}&bg=gc`;
-        const startTime = performance.now();
-        
         const imgEl = new Image();
         imgEl.className = "card-img";
         imgEl.setAttribute('data-preload-user', name);
-        
-        imgEl.onload = function() {
-          const endTime = performance.now();
-          const duration = ((endTime - startTime) / 1000).toFixed(2);
-          console.log(`📡 [SUCCESS] Cached card for ${name} in ${duration}s`);
-          handleItemProcessed();
-        };
-        
-        imgEl.onerror = function() {
-          console.warn(`⚠️ [FAILED] Card preload timed out for: ${name}`);
-          handleItemProcessed();
-        };
-
         imgEl.src = url;
+        imgEl.onload = handleItemProcessed;
+        imgEl.onerror = handleItemProcessed;
         vault.appendChild(imgEl);
       }
-    }, index * 60); // Clean 60ms pipelining speed
+    }, index * 60);
   });
 }
 
@@ -233,11 +259,12 @@ document.querySelectorAll('.tab').forEach(tab => {
 
 document.getElementById('refresh-btn').addEventListener('click', () => {
   loadBoard(activeBoard);
+  fetchLiveWinRates(); 
 });
 
+// Initialization Pipeline
 loadBoard('lead');
+fetchLiveWinRates(); 
 
-// Wake up Render Free Tier instantly via stealth handshake to bypass CORS checks
 fetch('https://wc2026-i9es.onrender.com/', { mode: 'no-cors' }).catch(() => {});
-
 setTimeout(triggerBackgroundPreload, 1200);
