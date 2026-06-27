@@ -139,3 +139,17 @@ document.getElementById('refresh-btn').addEventListener('click', () => {
 });
 
 loadBoard('lead');
+
+// ── Eager Preloading for Player Cards ──
+window.addEventListener('DOMContentLoaded', () => {
+  // Give the browser 800ms to load the initial points leaderboard first
+  setTimeout(() => {
+    Object.keys(PLAYER_INFO).forEach(name => {
+      const info = PLAYER_INFO[name];
+      if (info) {
+        const preloadImg = new Image();
+        preloadImg.src = `${CARD_URL}?avatar=${info.avatar}&user=${encodeURIComponent(info.user)}&bg=gc`;
+      }
+    });
+  }, 800);
+});
