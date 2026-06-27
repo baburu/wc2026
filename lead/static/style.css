@@ -73,7 +73,7 @@ header, nav, .content-wrap, footer {
 header {
   background: var(--pitch);
   color: var(--cream);
-  padding: 1rem;
+  padding: 1rem; /* Reduced padding from 2.5rem 1.5rem 2rem */
   text-align: center;
   position: relative;
   overflow: hidden;
@@ -288,7 +288,6 @@ aside#card-panel {
   font-family: 'Oswald', sans-serif;
   font-size: 1.6rem;
   letter-spacing: 0;
-  text-transform: uppercase;
   color: var(--cream);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
@@ -387,45 +386,51 @@ aside#card-panel {
   padding: 0.75rem 0 0.5rem;
 }
 
-/* ── Leaderboard ── */
-.leaderboard {
+/* ── Leaderboard Flex Layout ── */
+.leaderboard-flex {
+  display: flex;
+  flex-direction: column;
   width: 100%;
-  border-collapse: collapse;
+  max-width: 480px; /* Centers and keeps columns tight and elegant */
+  margin: 0 auto;
 }
 
-.leaderboard thead th {
+.board-header {
+  display: flex;
+  align-items: center;
+  padding: 0.75rem 1.25rem 0.6rem;
+  border-bottom: 1px solid var(--card-line);
   font-size: 10px;
   font-weight: 600;
   letter-spacing: 0.12em;
   text-transform: uppercase;
   color: var(--muted);
-  padding: 0.75rem 1.25rem 0.6rem;
-  text-align: left;
-  border-bottom: 1px solid var(--card-line);
 }
 
-.leaderboard thead th:last-child { text-align: right; }
+.board-body {
+  display: flex;
+  flex-direction: column;
+}
 
-.leaderboard tbody tr {
+.player-row {
+  display: flex;
+  align-items: center;
+  padding: 0.85rem 1.25rem;
   border-bottom: 1px solid var(--card-line);
   transition: background 0.1s;
   cursor: pointer;
 }
 
-.leaderboard tbody tr:hover { background: rgba(255, 255, 255, 0.04); }
-.leaderboard tbody tr.selected { background: rgba(232, 184, 75, 0.08); }
-.leaderboard tbody tr:last-child { border-bottom: none; }
+.player-row:hover { background: rgba(255, 255, 255, 0.04); }
+.player-row.selected { background: rgba(232, 184, 75, 0.08); }
+.player-row:last-child { border-bottom: none; }
 
-.leaderboard td {
-  padding: 0.85rem 1.25rem;
-  vertical-align: middle;
-}
-
-.rank {
+/* Flex Column Width Controls */
+.col-rank, .rank {
+  flex: 0 0 45px; /* Fixed rank column width */
   font-family: 'Anton', sans-serif;
   font-size: 1.15rem;
   color: var(--muted);
-  width: 36px;
   letter-spacing: 0.05em;
 }
 
@@ -433,26 +438,24 @@ aside#card-panel {
 .rank-2 { color: #888; }
 .rank-3 { color: #a0785a; }
 
-.player-name {
+.col-player, .player-name {
+  flex: 1;
+  max-width: 260px; /* 👈 ADJUST THIS: Brings Points closer/further from names */
   font-family: 'Oswald', sans-serif;
   font-size: 20px;
   letter-spacing: 0;
   text-transform: uppercase;
-  color: var(--ink);
+  color: var(--cream);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
 
-.player-name.clickable {
-  color: var(--cream);
-  text-decoration: none;
-}
-
-.score-cell {
+.col-pts, .score-cell {
+  flex: 0 0 60px;
   text-align: right;
+  margin-left: auto; /* Pushes points column to align nicely at the edge */
   font-family: 'Anton', sans-serif;
   font-size: 1.4rem;
-  letter-spacing: 0;
   color: var(--gold);
 }
 
@@ -517,7 +520,6 @@ footer {
   margin-bottom: 0.75rem;
   box-shadow: 0 4px 16px rgba(0,0,0,0.3);
   transition: opacity 0.4s ease;
-  /* Reserve space so card doesn't jump when bar disappears */
   min-height: 52px;
 }
 
@@ -566,7 +568,7 @@ footer {
   transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-/* ── Mobile ── */
+/* ── Mobile Responsive Override ── */
 @media (max-width: 680px) {
   .content-wrap {
     flex-direction: column;

@@ -131,8 +131,8 @@ function showCard(name) {
   const visibleClone = imgEl.cloneNode(true);
   panel.querySelector('.card-img-holder').appendChild(visibleClone);
 
-  document.querySelectorAll('.leaderboard tbody tr').forEach(tr => {
-    tr.classList.toggle('selected', tr.dataset.player === name);
+  document.querySelectorAll('.player-row').forEach(row => {
+    row.classList.toggle('selected', row.dataset.player === name);
   });
 }
 
@@ -147,24 +147,24 @@ function renderTable(players) {
     const medal = MEDALS[rank] || '';
     const isSelected = p.name === selectedPlayer ? ' selected' : '';
     return `
-      <tr class="player-row${isSelected}" data-player="${escHtml(p.name)}">
-        <td class="rank${rankClass}">${rank}</td>
-        <td class="player-name clickable">${escHtml(p.name)}${medal ? `<span class="medal-inline">${medal}</span>` : ''}</td>
-        <td class="score-cell">${p.score}</td>
-      </tr>`;
+      <div class="player-row${isSelected}" data-player="${escHtml(p.name)}">
+        <div class="rank${rankClass}">${rank}</div>
+        <div class="player-name">${escHtml(p.name)}${medal ? `<span class="medal-inline">${medal}</span>` : ''}</div>
+        <div class="score-cell">${p.score}</div>
+      </div>`;
   }).join('');
 
   return `
-    <table class="leaderboard" aria-label="Leaderboard">
-      <thead>
-        <tr>
-          <th>#</th>
-          <th>Player</th>
-          <th style="text-align:right">Pts</th>
-        </tr>
-      </thead>
-      <tbody>${rows}</tbody>
-    </table>`;
+    <div class="leaderboard-flex" role="grid" aria-label="Leaderboard">
+      <div class="board-header">
+        <div class="col-rank">#</div>
+        <div class="col-player">Player</div>
+        <div class="col-pts">Pts</div>
+      </div>
+      <div class="board-body">
+        ${rows}
+      </div>
+    </div>`;
 }
 
 function attachRowClicks() {
@@ -304,7 +304,6 @@ Promise.all([leadBoardPromise, wakePingPromise]).then(() => {
 });
 
 // 🛠️ Service Worker Registration 
-// This registers the background process responsible for caching the cards.
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
     navigator.serviceWorker.register('/sw.js')
