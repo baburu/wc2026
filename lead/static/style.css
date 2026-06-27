@@ -391,7 +391,7 @@ aside#card-panel {
   display: flex;
   flex-direction: column;
   width: 100%;
-  max-width: 480px; /* Centers and keeps columns tight and elegant */
+  max-width: 480px; /* Centers the list on the card cleanly */
   margin: 0 auto;
 }
 
@@ -400,6 +400,7 @@ aside#card-panel {
   align-items: center;
   padding: 0.75rem 1.25rem 0.6rem;
   border-bottom: 1px solid var(--card-line);
+  font-family: 'Plus Jakarta Sans', sans-serif;
   font-size: 10px;
   font-weight: 600;
   letter-spacing: 0.12em;
@@ -425,9 +426,24 @@ aside#card-panel {
 .player-row.selected { background: rgba(232, 184, 75, 0.08); }
 .player-row:last-child { border-bottom: none; }
 
-/* Flex Column Width Controls */
-.col-rank, .rank {
-  flex: 0 0 45px; /* Fixed rank column width */
+/* 📏 PURE COLUMN LAYOUT: Guarantees perfect mathematical alignment */
+.cell-rank {
+  flex: 0 0 50px; /* Exact same width for header '#' and row numbers */
+}
+
+.cell-player {
+  flex: 1;
+  max-width: 250px; /* 👈 ADJUST THIS: Change this value to bring points closer or further away */
+}
+
+.cell-pts {
+  flex: 0 0 60px;
+  text-align: right;
+  margin-left: auto; /* Aligns both 'Pts' header and score numbers perfectly on the right */
+}
+
+/* 🎨 COLUMN TYPOGRAPHY & COLORS */
+.rank {
   font-family: 'Anton', sans-serif;
   font-size: 1.15rem;
   color: var(--muted);
@@ -438,9 +454,7 @@ aside#card-panel {
 .rank-2 { color: #888; }
 .rank-3 { color: #a0785a; }
 
-.col-player, .player-name {
-  flex: 1;
-  max-width: 260px; /* 👈 ADJUST THIS: Brings Points closer/further from names */
+.player-name {
   font-family: 'Oswald', sans-serif;
   font-size: 20px;
   letter-spacing: 0;
@@ -450,10 +464,7 @@ aside#card-panel {
   -moz-osx-font-smoothing: grayscale;
 }
 
-.col-pts, .score-cell {
-  flex: 0 0 60px;
-  text-align: right;
-  margin-left: auto; /* Pushes points column to align nicely at the edge */
+.score-cell {
   font-family: 'Anton', sans-serif;
   font-size: 1.4rem;
   color: var(--gold);

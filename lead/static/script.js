@@ -148,18 +148,18 @@ function renderTable(players) {
     const isSelected = p.name === selectedPlayer ? ' selected' : '';
     return `
       <div class="player-row${isSelected}" data-player="${escHtml(p.name)}">
-        <div class="rank${rankClass}">${rank}</div>
-        <div class="player-name">${escHtml(p.name)}${medal ? `<span class="medal-inline">${medal}</span>` : ''}</div>
-        <div class="score-cell">${p.score}</div>
+        <div class="cell-rank rank${rankClass}">${rank}</div>
+        <div class="cell-player player-name">${escHtml(p.name)}${medal ? `<span class="medal-inline">${medal}</span>` : ''}</div>
+        <div class="cell-pts score-cell">${p.score}</div>
       </div>`;
   }).join('');
 
   return `
     <div class="leaderboard-flex" role="grid" aria-label="Leaderboard">
       <div class="board-header">
-        <div class="col-rank">#</div>
-        <div class="col-player">Player</div>
-        <div class="col-pts">Pts</div>
+        <div class="cell-rank">#</div>
+        <div class="cell-player">Player</div>
+        <div class="cell-pts">Pts</div>
       </div>
       <div class="board-body">
         ${rows}
