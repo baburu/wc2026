@@ -47,10 +47,10 @@ function showCard(name) {
     return;
   }
 
-  // 1. Look for the image node inside our invisible, protected DOM vault
+  // 1. Check if the element exists in our permanent invisible vault
   let imgEl = vault ? vault.querySelector(`[data-preload-user="${name}"]`) : null;
 
-  // 2. Fallback production builder if not ready in vault yet
+  // 2. Fallback: build on-demand if it hasn't finished preloading yet
   if (!imgEl) {
     const url = `${CARD_URL}?avatar=${info.avatar}&user=${encodeURIComponent(info.user)}&bg=gc`;
     imgEl = new Image();
@@ -64,14 +64,14 @@ function showCard(name) {
     if (vault) vault.appendChild(imgEl);
   }
 
-  // 3. Keep layout controls safe while updating display panel contents
+  // 3. Keep layout controls safe while resetting the container
   const progressContainer = document.getElementById('preload-progress-container');
   panel.innerHTML = '';
   
   if (progressContainer) panel.appendChild(progressContainer);
   if (vault) panel.appendChild(vault);
 
-  // 4. Paint layout structures
+  // 4. Render layout frames
   const innerLayout = document.createElement('div');
   innerLayout.className = 'card-inner';
   innerLayout.innerHTML = `
@@ -80,7 +80,7 @@ function showCard(name) {
   `;
   panel.appendChild(innerLayout);
 
-  // 5. CLONE the image element from the vault so the source node stays locked in active DOM layout memory
+  // 5. Clone image straight from the vault so the browser keeps the source node painted in RAM
   const visibleClone = imgEl.cloneNode(true);
   panel.querySelector('.card-img-holder').appendChild(visibleClone);
 
@@ -151,7 +151,7 @@ async function loadBoard(boardKey) {
   }
 }
 
-// ── True DOM-Anchored Network Preloader Syncing Engine ──
+// ── Optimized 60ms Fast-Stagger DOM Vault Preloader Engine ──
 function triggerBackgroundPreload() {
   const players = Object.keys(PLAYER_INFO);
   const totalPlayers = players.length;
@@ -184,6 +184,7 @@ function triggerBackgroundPreload() {
   }
   
   players.forEach((name, index) => {
+    // 60ms stagger speed-run pipeline handles concurrent networking without crashing free-tier container CPUs
     setTimeout(() => {
       const info = PLAYER_INFO[name];
       
@@ -211,10 +212,9 @@ function triggerBackgroundPreload() {
         imgEl.src = url;
         imgEl.alt = `${name}'s card`;
         
-        // Append it into our layout tree so the browser never drops the resource pixels!
         vault.appendChild(imgEl);
       }
-    }, index * 250);
+    }, index * 60);
   });
 }
 
@@ -231,5 +231,11 @@ document.getElementById('refresh-btn').addEventListener('click', () => {
   loadBoard(activeBoard);
 });
 
+// Primary Handshake initialization
 loadBoard('lead');
+
+// Wake up Render Free Tier immediately if it was asleep
+fetch('https://wc2026-i9es.onrender.com/').catch(() => {});
+
+// Trigger card pipeline shortly after initial layout frames paint
 setTimeout(triggerBackgroundPreload, 1200);
