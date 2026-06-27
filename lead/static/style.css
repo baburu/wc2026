@@ -399,7 +399,7 @@ aside#card-panel {
 .board-header {
   display: flex;
   align-items: center;
-  padding: 0.75rem 1.25rem 0.6rem;
+  padding: 0.75rem 1rem 0.6rem; /* Adjusted horizontal padding to match rounded rows */
   border-bottom: 1px solid var(--card-line);
   font-family: 'Plus Jakarta Sans', sans-serif;
   font-size: 10px;
@@ -407,25 +407,48 @@ aside#card-panel {
   letter-spacing: 0.12em;
   text-transform: uppercase;
   color: var(--muted);
+  margin-bottom: 8px; /* Small layout spacing below the header */
 }
 
 .board-body {
   display: flex;
   flex-direction: column;
+  gap: 6px; /* Adds clean structural gaps between rows instead of flat lines */
 }
 
 .player-row {
   display: flex;
   align-items: center;
-  padding: 0.85rem 1.25rem;
-  border-bottom: 1px solid var(--card-line);
-  transition: background 0.1s;
+  padding: 0.85rem 1rem; /* Slightly narrower padding to offset the rounded corners */
+  background: rgba(255, 255, 255, 0.015); /* Gives each row its own subtle floating card */
+  border: 1px solid rgba(255, 255, 255, 0.02);
+  border-radius: 8px; /* Rounded corners */
+  transition: background 0.2s, transform 0.2s, border-color 0.2s;
   cursor: pointer;
 }
 
-.player-row:hover { background: rgba(255, 255, 255, 0.04); }
-.player-row.selected { background: rgba(232, 184, 75, 0.08); }
-.player-row:last-child { border-bottom: none; }
+/* Lift-on-hover micro-interaction with a subtle gold border glow */
+.player-row:hover { 
+  background: rgba(255, 255, 255, 0.05); 
+  border-color: rgba(244, 197, 66, 0.15); 
+  transform: translateY(-1px); 
+}
+
+.player-row.selected { 
+  background: rgba(232, 184, 75, 0.08); 
+  border-color: rgba(232, 184, 75, 0.3);
+}
+
+/* Left-Border Podium Accents (Top 3) */
+.player-row:nth-child(1) {
+  border-left: 3px solid var(--gold);
+}
+.player-row:nth-child(2) {
+  border-left: 3px solid #999; 
+}
+.player-row:nth-child(3) {
+  border-left: 3px solid #a0785a; 
+}
 
 /* 📏 PURE COLUMN LAYOUT: Guarantees perfect mathematical alignment */
 .cell-rank {
@@ -434,7 +457,7 @@ aside#card-panel {
 
 .cell-player {
   flex: 1;
-  max-width: 250px; /* 👈 ADJUST THIS: Change this value to bring points closer or further away */
+  max-width: 250px; /* Adjust this value to bring points closer or further away */
 }
 
 .cell-pts {
@@ -466,8 +489,8 @@ aside#card-panel {
 }
 
 .score-cell {
-  font-family: 'Oswald', sans-serif; /* 👈 Changed from 'Anton' to 'Oswald' */
-  font-variant-numeric: tabular-nums; /* 👈 Forces 1 to be the exact same width as 3, 5, 9 */
+  font-family: 'Oswald', sans-serif; /* Changed from 'Anton' to 'Oswald' */
+  font-variant-numeric: tabular-nums; /* Forces 1 to be the exact same width as 3, 5, 9 */
   font-size: 1.4rem;
   color: var(--gold);
 }
