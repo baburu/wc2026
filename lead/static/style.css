@@ -236,13 +236,6 @@ aside#card-panel {
   to { opacity: 1; transform: translateY(0); }
 }
 
-.card-name {
-  font-family: 'Anton', sans-serif;
-  font-size: 1.3rem;
-  letter-spacing: 0.06em;
-  color: var(--cream);
-}
-
 .card-img {
   width: 100%;
   border-radius: 10px;
@@ -292,7 +285,7 @@ aside#card-panel {
 }
 
 .section-label h2 {
-  font-family: 'Anton', sans-serif;
+  font-family: 'Oswald', sans-serif;
   font-size: 1.6rem;
   letter-spacing: 0;
   color: var(--cream);
@@ -440,7 +433,7 @@ aside#card-panel {
 .rank-3 { color: #a0785a; }
 
 .player-name {
-  font-family: 'Anton', sans-serif;
+  font-family: 'Oswald', sans-serif;
   font-size: 20px;
   letter-spacing: 0;
   text-transform: uppercase;

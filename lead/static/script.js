@@ -115,7 +115,6 @@ function showCard(name) {
   const innerLayout = document.createElement('div');
   innerLayout.className = 'card-inner';
   innerLayout.innerHTML = `
-    <div class="card-name">${escHtml(name)}</div>
     <div class="card-img-holder"></div>
     <div class="card-stat-badge">
       <span class="stat-label">Prediction Accuracy</span>
