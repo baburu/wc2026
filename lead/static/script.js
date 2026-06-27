@@ -27,8 +27,6 @@ const PLAYER_INFO = {
   'Pffq':    { avatar: 20, user: 'xenter0384' },
 };
 
-const PERMANENT_IMAGE_CACHE = {};
-
 let activeBoard = 'lead';
 let selectedPlayer = null;
 
@@ -39,31 +37,41 @@ function escHtml(s) {
 function showCard(name) {
   selectedPlayer = name;
   const panel = document.getElementById('card-panel');
+  const vault = document.getElementById('hidden-card-vault');
   const info = PLAYER_INFO[name];
 
   if (!info) {
-    panel.innerHTML = `<div class="card-placeholder"><p>No card found for ${escHtml(name)}</p></div>`;
+    panel.innerHTML = `
+      <div id="hidden-card-vault" style="display: none !important;">${vault ? vault.innerHTML : ''}</div>
+      <div class="card-placeholder"><p>No card found for ${escHtml(name)}</p></div>`;
     return;
   }
 
-  if (!PERMANENT_IMAGE_CACHE[name]) {
+  // 1. Look for the image node inside our invisible, protected DOM vault
+  let imgEl = vault ? vault.querySelector(`[data-preload-user="${name}"]`) : null;
+
+  // 2. Fallback production builder if not ready in vault yet
+  if (!imgEl) {
     const url = `${CARD_URL}?avatar=${info.avatar}&user=${encodeURIComponent(info.user)}&bg=gc`;
-    const imgEl = new Image();
+    imgEl = new Image();
     imgEl.className = "card-img";
+    imgEl.setAttribute('data-preload-user', name);
     imgEl.src = url;
     imgEl.alt = `${name}'s card`;
     imgEl.onerror = function() {
       this.parentElement.innerHTML = '<div class="card-placeholder"><p>Card unavailable</p></div>';
     };
-    PERMANENT_IMAGE_CACHE[name] = imgEl;
+    if (vault) vault.appendChild(imgEl);
   }
 
-  const existingContainer = document.getElementById('preload-progress-container');
+  // 3. Keep layout controls safe while updating display panel contents
+  const progressContainer = document.getElementById('preload-progress-container');
   panel.innerHTML = '';
-  if (existingContainer) {
-    panel.appendChild(existingContainer);
-  }
+  
+  if (progressContainer) panel.appendChild(progressContainer);
+  if (vault) panel.appendChild(vault);
 
+  // 4. Paint layout structures
   const innerLayout = document.createElement('div');
   innerLayout.className = 'card-inner';
   innerLayout.innerHTML = `
@@ -71,7 +79,10 @@ function showCard(name) {
     <div class="card-img-holder"></div>
   `;
   panel.appendChild(innerLayout);
-  panel.querySelector('.card-img-holder').appendChild(PERMANENT_IMAGE_CACHE[name]);
+
+  // 5. CLONE the image element from the vault so the source node stays locked in active DOM layout memory
+  const visibleClone = imgEl.cloneNode(true);
+  panel.querySelector('.card-img-holder').appendChild(visibleClone);
 
   document.querySelectorAll('.leaderboard tbody tr').forEach(tr => {
     tr.classList.toggle('selected', tr.dataset.player === name);
@@ -140,7 +151,7 @@ async function loadBoard(boardKey) {
   }
 }
 
-// ── True Synchronous Network Preloader ──
+// ── True DOM-Anchored Network Preloader Syncing Engine ──
 function triggerBackgroundPreload() {
   const players = Object.keys(PLAYER_INFO);
   const totalPlayers = players.length;
@@ -149,12 +160,12 @@ function triggerBackgroundPreload() {
   const progressContainer = document.getElementById('preload-progress-container');
   const progressBarFill = document.getElementById('progress-bar-fill');
   const progressPercentText = document.getElementById('progress-percent');
+  const vault = document.getElementById('hidden-card-vault');
 
-  if (!progressContainer || !progressBarFill || !progressPercentText) return;
+  if (!progressContainer || !progressBarFill || !progressPercentText || !vault) return;
 
   progressContainer.classList.remove('hidden');
 
-  // Shared function to update the progress bar ONLY when things are complete
   function handleItemProcessed() {
     preloadedCount++;
     const currentPercentage = Math.round((preloadedCount / totalPlayers) * 100);
@@ -176,8 +187,7 @@ function triggerBackgroundPreload() {
     setTimeout(() => {
       const info = PLAYER_INFO[name];
       
-      // If already cached by a click event earlier, skip the download hook and increment progress immediately
-      if (PERMANENT_IMAGE_CACHE[name]) {
+      if (vault.querySelector(`[data-preload-user="${name}"]`)) {
         handleItemProcessed();
         return;
       }
@@ -186,24 +196,25 @@ function triggerBackgroundPreload() {
         const url = `${CARD_URL}?avatar=${info.avatar}&user=${encodeURIComponent(info.user)}&bg=gc`;
         const imgEl = new Image();
         imgEl.className = "card-img";
+        imgEl.setAttribute('data-preload-user', name);
         
-        // CRITICAL FIX: Increment the bar ONLY when the network file successfully finishes downloading
         imgEl.onload = function() {
-          console.log(`📡 Cached successfully: ${name}`);
+          console.log(`📡 DOM Vault secured: ${name}`);
           handleItemProcessed();
         };
         
-        // Increment progress even on error to prevent the bar from hanging forever
         imgEl.onerror = function() {
-          console.warn(`⚠️ Failed to preload card for: ${name}`);
+          console.warn(`⚠️ Preload failed for: ${name}`);
           handleItemProcessed();
         };
 
         imgEl.src = url;
         imgEl.alt = `${name}'s card`;
-        PERMANENT_IMAGE_CACHE[name] = imgEl;
+        
+        // Append it into our layout tree so the browser never drops the resource pixels!
+        vault.appendChild(imgEl);
       }
-    }, index * 250); // Keeps the staggered request flow safe for free-tier servers
+    }, index * 250);
   });
 }
 
