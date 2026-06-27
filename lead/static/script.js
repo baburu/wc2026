@@ -145,8 +145,7 @@ function renderTable(players) {
     return `
       <tr class="player-row${isSelected}" data-player="${escHtml(p.name)}">
         <td class="rank${rankClass}">${rank}</td>
-        <td class="player-name clickable">${escHtml(p.name)}</td>
-        <td class="medal">${medal}</td>
+        <td class="player-name clickable">${escHtml(p.name)}${medal ? `<span class="medal-inline">${medal}</span>` : ''}</td>
         <td class="score-cell">${p.score}</td>
       </tr>`;
   }).join('');
@@ -157,7 +156,6 @@ function renderTable(players) {
         <tr>
           <th>#</th>
           <th>Player</th>
-          <th></th>
           <th style="text-align:right">Pts</th>
         </tr>
       </thead>
@@ -194,7 +192,39 @@ async function loadBoard(boardKey) {
   }
 }
 
-function triggerBackgroundPreload() {
+// Loads a single player's card image into the vault. Resolves once
+// loaded (or failed) so the pool below knows when a slot frees up.
+function preloadOne(name, vault) {
+  return new Promise((resolve) => {
+    if (vault.querySelector(`[data-preload-user="${name}"]`)) {
+      resolve();
+      return;
+    }
+
+    const info = PLAYER_INFO[name];
+    if (!info) {
+      resolve();
+      return;
+    }
+
+    const url = `${CARD_URL}?avatar=${info.avatar}&user=${encodeURIComponent(info.user)}&bg=gc`;
+    const imgEl = new Image();
+    imgEl.className = "card-img";
+    imgEl.setAttribute('data-preload-user', name);
+    imgEl.onload = resolve;
+    imgEl.onerror = resolve;
+    imgEl.src = url;
+    vault.appendChild(imgEl);
+  });
+}
+
+// Concurrency-limited preload pool: keeps PRELOAD_CONCURRENCY requests
+// in flight at once instead of bursting all of them or drip-feeding
+// them one every 60ms. Faster wall-clock completion, still gentle on
+// the card-render endpoint.
+const PRELOAD_CONCURRENCY = 3;
+
+async function triggerBackgroundPreload() {
   const players = Object.keys(PLAYER_INFO);
   const totalPlayers = players.length;
   let preloadedCount = 0;
@@ -211,7 +241,7 @@ function triggerBackgroundPreload() {
   function handleItemProcessed() {
     preloadedCount++;
     const currentPercentage = Math.round((preloadedCount / totalPlayers) * 100);
-    
+
     progressBarFill.style.width = `${currentPercentage}%`;
     progressPercentText.innerText = `${currentPercentage}%`;
 
@@ -219,33 +249,26 @@ function triggerBackgroundPreload() {
       setTimeout(() => {
         progressContainer.style.opacity = '0';
         setTimeout(() => {
+          progressContainer.style.visibility = 'hidden';
+          progressContainer.style.height = progressContainer.offsetHeight + 'px';
           progressContainer.classList.add('hidden');
-        }, 400); 
-      }, 1200); 
+        }, 400);
+      }, 1200);
     }
   }
-  
-  players.forEach((name, index) => {
-    setTimeout(() => {
-      const info = PLAYER_INFO[name];
-      
-      if (vault.querySelector(`[data-preload-user="${name}"]`)) {
-        handleItemProcessed();
-        return;
-      }
 
-      if (info) {
-        const url = `${CARD_URL}?avatar=${info.avatar}&user=${encodeURIComponent(info.user)}&bg=gc`;
-        const imgEl = new Image();
-        imgEl.className = "card-img";
-        imgEl.setAttribute('data-preload-user', name);
-        imgEl.src = url;
-        imgEl.onload = handleItemProcessed;
-        imgEl.onerror = handleItemProcessed;
-        vault.appendChild(imgEl);
-      }
-    }, index * 60);
-  });
+  let nextIndex = 0;
+
+  async function worker() {
+    while (nextIndex < players.length) {
+      const name = players[nextIndex++];
+      await preloadOne(name, vault);
+      handleItemProcessed();
+    }
+  }
+
+  const workerCount = Math.min(PRELOAD_CONCURRENCY, totalPlayers);
+  await Promise.all(Array.from({ length: workerCount }, worker));
 }
 
 document.querySelectorAll('.tab').forEach(tab => {
@@ -263,8 +286,14 @@ document.getElementById('refresh-btn').addEventListener('click', () => {
 });
 
 // Initialization Pipeline
-loadBoard('lead');
-fetchLiveWinRates(); 
+const leadBoardPromise = loadBoard('lead');
+fetchLiveWinRates();
 
-fetch('https://wc2026-i9es.onrender.com/', { mode: 'no-cors' }).catch(() => {});
-setTimeout(triggerBackgroundPreload, 1200);
+// Wake up the Render dyno immediately, and once that resolves (or the
+// lead board has rendered, whichever is later) kick off the card
+// preload pool — no more guessing a flat "safe" delay.
+const wakePingPromise = fetch('https://wc2026-i9es.onrender.com/', { mode: 'no-cors' }).catch(() => {});
+
+Promise.all([leadBoardPromise, wakePingPromise]).then(() => {
+  triggerBackgroundPreload();
+});

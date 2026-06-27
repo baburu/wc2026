@@ -3,23 +3,70 @@
 :root {
   --pitch:     #1a3a2a;
   --pitch-mid: #1f4a34;
-  --cream:     #fefcf7;
-  --gold:      #e8b84b;
+  --card-bg:   #0f261d;
+  --card-line: #29483a;
+  --cream:     #f6f0df;
+  --gold:      #f4c542;
   --gold-dim:  #c99b35;
   --sage:      #c8dcc0;
   --sage-dim:  #9eb89a;
-  --ink:       #1c2820;
-  --ink-soft:  #3d5048;
-  --muted:     #7a8e80;
+  --ink:       #f6f0df;
+  --ink-soft:  #c8d8c0;
+  --muted:     #8aaa8e;
 }
 
 body {
-  background-color: var(--cream);
+  background-color: #07130f;
+  background-image:
+    radial-gradient(72% 46% at 50% -12%, rgba(232, 184, 75, 0.18), transparent 62%),
+    radial-gradient(42% 28% at 92% 8%,  rgba(200, 220, 192, 0.14), transparent 58%),
+    radial-gradient(44% 30% at 8%  36%, rgba(26,  58,  42,  0.12), transparent 60%),
+    linear-gradient(90deg,  rgba(255,255,255,0.035) 1px, transparent 0),
+    linear-gradient(0deg,   rgba(255,255,255,0.025) 1px, transparent 0),
+    linear-gradient(#0d2219, #07130f 38%, #061510);
+  background-size: auto, auto, auto, 56px 56px, 56px 56px, auto;
   color: var(--ink);
-  font-family: 'DM Sans', sans-serif;
+  font-family: 'Plus Jakarta Sans', sans-serif;
   font-size: 15px;
   line-height: 1.6;
   min-height: 100vh;
+  position: relative;
+  overflow-x: hidden;
+}
+
+/* Diagonal stripe overlay */
+body::before {
+  content: '';
+  pointer-events: none;
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  opacity: 0.55;
+  background-image: repeating-linear-gradient(
+    105deg,
+    rgba(31, 194, 105, 0.035) 0 64px,
+    rgba(255, 255, 255, 0.02) 64px 128px
+  );
+  -webkit-mask-image: linear-gradient(black, transparent 58%);
+  mask-image: linear-gradient(black, transparent 58%);
+}
+
+/* Film grain noise */
+body::after {
+  content: '';
+  pointer-events: none;
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  opacity: 0.03;
+  mix-blend-mode: overlay;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3' stitchTiles='stitch' /%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.75'/%3E%3C/svg%3E");
+}
+
+/* Ensure all content sits above the pseudo-elements */
+header, nav, .content-wrap, footer {
+  position: relative;
+  z-index: 1;
 }
 
 /* ── Header ── */
@@ -57,11 +104,13 @@ header::before {
 }
 
 .header-title {
-  font-family: 'Bebas Neue', sans-serif;
+  font-family: 'Anton', sans-serif;
   font-size: clamp(3rem, 10vw, 5.5rem);
-  letter-spacing: 0.04em;
+  letter-spacing: 0;
   line-height: 0.95;
   color: var(--cream);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
 .header-title span { color: var(--gold); }
@@ -164,7 +213,7 @@ aside#card-panel {
   justify-content: center;
   gap: 0.5rem;
   padding: 2rem 1rem;
-  border: 1.5px dashed var(--sage);
+  border: 1.5px dashed rgba(200, 220, 192, 0.25);
   border-radius: 12px;
   color: var(--muted);
   font-size: 13px;
@@ -188,10 +237,10 @@ aside#card-panel {
 }
 
 .card-name {
-  font-family: 'Bebas Neue', sans-serif;
+  font-family: 'Anton', sans-serif;
   font-size: 1.3rem;
   letter-spacing: 0.06em;
-  color: var(--ink);
+  color: var(--cream);
 }
 
 .card-img {
@@ -204,13 +253,15 @@ aside#card-panel {
 /* ── Live Win Rate Stats Badge ── */
 .card-stat-badge {
   margin-top: 0.4rem;
-  background: var(--pitch-mid);
-  border: 1px solid var(--sage-dim);
+  background:
+    linear-gradient(180deg, rgba(255,255,255,0.04), rgba(255,255,255,0.01)),
+    var(--card-bg);
+  border: 1px solid rgba(246, 240, 223, 0.12);
   border-radius: 6px;
   padding: 6px 14px;
   text-align: center;
   width: 100%;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+  box-shadow: 0 2px 8px rgba(0,0,0,0.25);
 }
 
 .stat-label {
@@ -225,7 +276,7 @@ aside#card-panel {
 
 .stat-value {
   display: block;
-  font-family: 'Bebas Neue', sans-serif;
+  font-family: 'Anton', sans-serif;
   font-size: 1.6rem;
   color: var(--gold);
   line-height: 1.1;
@@ -241,17 +292,20 @@ aside#card-panel {
 }
 
 .section-label h2 {
-  font-family: 'Bebas Neue', sans-serif;
+  font-family: 'Anton', sans-serif;
   font-size: 1.6rem;
-  letter-spacing: 0.06em;
-  color: var(--ink);
+  letter-spacing: 0;
+  color: var(--cream);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
 .section-label .badge {
   background: var(--gold);
-  color: var(--ink);
+  color: var(--card-bg);
+  font-family: 'Plus Jakarta Sans', sans-serif;
   font-size: 10px;
-  font-weight: 600;
+  font-weight: 700;
   letter-spacing: 0.1em;
   text-transform: uppercase;
   padding: 3px 9px;
@@ -263,7 +317,7 @@ aside#card-panel {
   display: flex;
   gap: 4px;
   margin-bottom: 1.25rem;
-  border-bottom: 1.5px solid var(--sage);
+  border-bottom: 1.5px solid rgba(200, 220, 192, 0.2);
 }
 
 .tab {
@@ -282,12 +336,62 @@ aside#card-panel {
 }
 
 .tab.active {
-  color: var(--pitch);
-  border-bottom-color: var(--pitch);
+  color: var(--cream);
+  border-bottom-color: var(--gold);
   font-weight: 600;
 }
 
 .tab:hover:not(.active) { color: var(--ink-soft); }
+
+/* ── Leaderboard surface card ── */
+.leaderboard-surface {
+  background:
+    linear-gradient(180deg, rgba(255,255,255,0.04), rgba(255,255,255,0.01)),
+    var(--card-bg);
+  border: 1px solid rgba(246, 240, 223, 0.12);
+  border-radius: 12px;
+  box-shadow: 0 20px 70px rgba(0,0,0,0.45);
+  overflow: hidden;
+  position: relative;
+}
+
+.leaderboard-surface::before {
+  content: '';
+  pointer-events: none;
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  opacity: 0.5;
+  background-image: repeating-linear-gradient(
+    102deg,
+    rgba(31, 194, 105, 0.05) 0 42px,
+    rgba(255, 255, 255, 0.03) 42px 84px
+  );
+  -webkit-mask-image: linear-gradient(black, transparent 68%);
+  mask-image: linear-gradient(black, transparent 68%);
+}
+
+.leaderboard-surface > * { position: relative; z-index: 1; }
+
+/* Tabs row: tabs on the left, refresh button on the right, all inline */
+.leaderboard-surface .tabs-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.35rem 1.25rem 0;
+  border-bottom: 1px solid var(--card-line);
+}
+
+.leaderboard-surface .tabs {
+  padding: 0;
+  margin-bottom: 0;
+  border-bottom: none;
+  flex: 1;
+}
+
+.leaderboard-surface #board-container {
+  padding: 0.75rem 0 0.5rem;
+}
 
 /* ── Leaderboard ── */
 .leaderboard {
@@ -301,30 +405,30 @@ aside#card-panel {
   letter-spacing: 0.12em;
   text-transform: uppercase;
   color: var(--muted);
-  padding: 0 0.75rem 0.6rem;
+  padding: 0.75rem 1.25rem 0.6rem;
   text-align: left;
-  border-bottom: 1.5px solid var(--sage);
+  border-bottom: 1px solid var(--card-line);
 }
 
 .leaderboard thead th:last-child { text-align: right; }
 
 .leaderboard tbody tr {
-  border-bottom: 1px solid #e8ede5;
+  border-bottom: 1px solid var(--card-line);
   transition: background 0.1s;
   cursor: pointer;
 }
 
-.leaderboard tbody tr:hover { background: rgba(26, 58, 42, 0.04); }
-.leaderboard tbody tr.selected { background: rgba(26, 58, 42, 0.08); }
+.leaderboard tbody tr:hover { background: rgba(255, 255, 255, 0.04); }
+.leaderboard tbody tr.selected { background: rgba(232, 184, 75, 0.08); }
 .leaderboard tbody tr:last-child { border-bottom: none; }
 
 .leaderboard td {
-  padding: 0.85rem 0.75rem;
+  padding: 0.85rem 1.25rem;
   vertical-align: middle;
 }
 
 .rank {
-  font-family: 'Bebas Neue', sans-serif;
+  font-family: 'Anton', sans-serif;
   font-size: 1.15rem;
   color: var(--muted);
   width: 36px;
@@ -336,30 +440,34 @@ aside#card-panel {
 .rank-3 { color: #a0785a; }
 
 .player-name {
-  font-weight: 500;
-  font-size: 15px;
+  font-family: 'Anton', sans-serif;
+  font-size: 20px;
+  letter-spacing: 0;
+  text-transform: uppercase;
   color: var(--ink);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
 .player-name.clickable {
-  color: var(--pitch);
-  text-decoration: underline;
-  text-decoration-color: var(--sage);
-  text-underline-offset: 3px;
+  color: var(--cream);
+  text-decoration: none;
 }
 
 .score-cell {
   text-align: right;
-  font-family: 'Bebas Neue', sans-serif;
+  font-family: 'Anton', sans-serif;
   font-size: 1.4rem;
-  letter-spacing: 0.04em;
-  color: var(--pitch);
+  letter-spacing: 0;
+  color: var(--gold);
 }
 
-.medal {
+.medal-inline {
+  display: inline-block;
+  margin-left: 8px;
   font-size: 1rem;
-  width: 28px;
-  text-align: center;
+  vertical-align: middle;
+  line-height: 1;
 }
 
 /* ── States ── */
@@ -373,15 +481,9 @@ aside#card-panel {
 .state-msg .icon { font-size: 2rem; margin-bottom: 0.5rem; display: block; }
 
 /* ── Refresh ── */
-.refresh-wrap {
-  display: flex;
-  justify-content: flex-end;
-  margin-bottom: 0.75rem;
-}
-
 .refresh-btn {
   background: none;
-  border: 1.5px solid var(--sage-dim);
+  border: 1px solid rgba(200, 220, 192, 0.25);
   border-radius: 6px;
   font-size: 11px;
   font-weight: 500;
@@ -394,9 +496,10 @@ aside#card-panel {
   align-items: center;
   gap: 5px;
   transition: border-color 0.15s, color 0.15s;
+  flex-shrink: 0;
 }
 
-.refresh-btn:hover { color: var(--pitch); border-color: var(--pitch); }
+.refresh-btn:hover { color: var(--cream); border-color: rgba(200, 220, 192, 0.55); }
 
 /* ── Footer ── */
 footer {
@@ -404,25 +507,30 @@ footer {
   padding: 2rem 1rem 3rem;
   font-size: 12px;
   color: var(--muted);
-  border-top: 1px solid var(--sage);
+  border-top: 1px solid rgba(200, 220, 192, 0.12);
   max-width: 980px;
   margin: 0 auto;
 }
 
 /* ── Soccer Progress Bar Styles ── */
 .preload-progress-wrap {
-  background-color: var(--pitch-mid);
-  border: 1.5px solid var(--sage-dim);
+  background:
+    linear-gradient(180deg, rgba(255,255,255,0.04), rgba(255,255,255,0.01)),
+    var(--card-bg);
+  border: 1px solid rgba(246, 240, 223, 0.12);
   border-radius: 8px;
   padding: 10px 12px;
   margin-bottom: 0.75rem;
-  box-shadow: inset 0 1px 4px rgba(0,0,0,0.15);
+  box-shadow: 0 4px 16px rgba(0,0,0,0.3);
   transition: opacity 0.4s ease;
+  /* Reserve space so card doesn't jump when bar disappears */
+  min-height: 52px;
 }
 
 .preload-progress-wrap.hidden {
-  display: none;
+  visibility: hidden;
   opacity: 0;
+  pointer-events: none;
 }
 
 .progress-header {
@@ -441,9 +549,9 @@ footer {
 
 .progress-num {
   color: var(--gold);
-  font-family: 'Bebas Neue', sans-serif;
+  font-family: 'Anton', sans-serif;
   font-size: 14px;
-  letter-spacing: 0.05em;
+  letter-spacing: 0;
 }
 
 .progress-bar-bg {
