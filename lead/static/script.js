@@ -9,6 +9,9 @@ const ENDPOINTS = {
 // 💎 Fully configured Google Sheets Scoring Data Stream URL:
 const SCORING_SHEET_CSV_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vT8fEdr0djoTa4bc8diSdwH2xSDJ4JTlNgHUWho8lQ5btMR9Joe3sXhZPP72oTSE9MBdoYKrY4DlFl9/pub?gid=865998988&single=true&output=csv';
 
+// 🔮 Fully configured Google Sheets Predictions Data Stream URL:
+const PREDICTIONS_SHEET_CSV_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vT8fEdr0djoTa4bc8diSdwH2xSDJ4JTlNgHUWho8lQ5btMR9Joe3sXhZPP72oTSE9MBdoYKrY4DlFl9/pub?gid=793952308&single=true&output=csv';
+
 const MEDALS = { 1: '🥇', 2: '🥈', 3: '🥉' };
 const CARD_URL = 'https://wc2026-i9es.onrender.com/card';
 
@@ -310,4 +313,106 @@ if ('serviceWorker' in navigator) {
       .then(reg => console.log('Service Worker registered successfully:', reg.scope))
       .catch(err => console.warn('Service Worker registration failed:', err));
   });
+}
+
+// ── Predictions Tab Navigation and Flex Parser Logic ──
+
+const btnStandings = document.getElementById('btn-standings');
+const btnPredictions = document.getElementById('btn-predictions');
+const viewStandings = document.getElementById('view-standings');
+const viewPredictions = document.getElementById('view-predictions');
+
+btnStandings.addEventListener('click', () => {
+  btnStandings.classList.add('active');
+  btnPredictions.classList.remove('active');
+  viewStandings.style.display = 'block';
+  viewPredictions.style.display = 'none';
+});
+
+btnPredictions.addEventListener('click', () => {
+  btnPredictions.classList.add('active');
+  btnStandings.classList.remove('active');
+  viewStandings.style.display = 'none';
+  viewPredictions.style.display = 'block';
+  loadPredictions();
+});
+
+async function loadPredictions() {
+  const container = document.getElementById('predictions-container');
+  container.innerHTML = `<div class="state-msg"><span class="icon">⏳</span>Loading tournament predictions...</div>`;
+
+  try {
+    const res = await fetch(PREDICTIONS_SHEET_CSV_URL);
+    if (!res.ok) throw new Error("Could not fetch predictions spreadsheet");
+    const csvText = await res.text();
+
+    const rows = csvText.split(/\r?\n/).map(row => row.split(','));
+    if (rows.length < 3) throw new Error("Spreadsheet contains empty data");
+
+    // Dynamic Header parser: Grabs players directly from Row 2 of the sheet (index 1 in CSV array)
+    const headerRow = rows[1]; 
+    const players = [];
+    for (let c = 4; c <= 17; c++) {
+      if (headerRow[c]) players.push(headerRow[c].trim());
+    }
+
+    // Build responsive flex matrix
+    let html = `<div class="predictions-flex-container">
+                  <div class="predictions-flex-table">
+                    <div class="pred-header">
+                      <div class="cell-match-info">Match</div>
+                      ${players.map(p => `<div class="cell-player-header">${escHtml(p)}</div>`).join('')}
+                    </div>
+                    <div class="pred-body">`;
+
+    for (let idx = 2; idx < rows.length; idx++) {
+      const row = rows[idx];
+      if (!row || row.length < 5) continue;
+
+      const matchNum = row[1] ? row[1].trim() : '';
+      const team1 = row[2] ? row[2].trim() : '';
+      const team2 = row[3] ? row[3].trim() : '';
+
+      // Detect visual stages (like "Group Phase", "Round of 32") in merged columns
+      if (!matchNum && (team1.includes("Phase") || team1.includes("Round") || team1.includes("Quarter") || team1.includes("Semi") || team1.includes("Third") || team1.includes("Final"))) {
+        html += `<div class="stage-header-row-flex">
+                   <div class="stage-header-title">${escHtml(team1 || team2)}</div>
+                 </div>`;
+        continue;
+      }
+
+      // Render standard prediction row
+      if (matchNum && !isNaN(matchNum)) {
+        html += `<div class="pred-row">
+                   <div class="cell-match-info">
+                     <span class="m-num">${matchNum}</span>
+                     <span class="m-teams">${escHtml(team1)} vs ${escHtml(team2)}</span>
+                   </div>`;
+
+        // Render cell prediction values (Cols E to R -> indices 4 to 17)
+        for (let c = 4; c <= 17; c++) {
+          const pred = row[c] ? row[c].trim().toUpperCase() : '';
+          let predClass = '';
+          
+          if (pred === '1') predClass = 'pred-home';
+          else if (pred === '2') predClass = 'pred-away';
+          else if (pred === 'X') predClass = 'pred-draw';
+
+          html += `<div class="cell-player-pred ${predClass}">${escHtml(pred)}</div>`;
+        }
+        html += `</div>`;
+      }
+    }
+
+    html += `</div></div></div>`;
+    container.innerHTML = html;
+
+  } catch (err) {
+    container.innerHTML = `
+      <div class="state-msg">
+        <span class="icon">⚠️</span>
+        Couldn't load predictions spreadsheet.<br>
+        <small style="margin-top:6px;display:block;font-size:11px;opacity:0.7">${escHtml(err.message)}</small>
+      </div>`;
+  }
 }

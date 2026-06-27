@@ -604,6 +604,142 @@ footer {
   transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
+/* ── Predictions Flex Matrix Styling ── */
+.predictions-flex-container {
+  width: 100%;
+  overflow-x: auto; /* Handles horizontal scrolling dynamically on mobile */
+  border-radius: 12px;
+  border: 1px solid var(--card-line);
+  background: var(--card-bg);
+  box-shadow: 0 20px 70px rgba(0,0,0,0.45);
+  margin-top: 1rem;
+}
+
+.predictions-flex-table {
+  display: flex;
+  flex-direction: column;
+  min-width: 1150px; /* Bounding box holds all columns tightly aligned */
+  width: 100%;
+}
+
+.pred-header {
+  display: flex;
+  align-items: center;
+  padding: 0.75rem 0.5rem;
+  border-bottom: 2px solid var(--card-line);
+  background: rgba(255, 255, 255, 0.02);
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.pred-body {
+  display: flex;
+  flex-direction: column;
+  gap: 4px; /* Matches leaderboard rounded card gaps */
+  padding: 6px;
+}
+
+.pred-row {
+  display: flex;
+  align-items: center;
+  padding: 0.5rem;
+  background: rgba(255, 255, 255, 0.015);
+  border: 1px solid rgba(255, 255, 255, 0.02);
+  border-radius: 8px;
+  transition: background 0.15s, transform 0.15s;
+  cursor: pointer;
+}
+
+.pred-row:hover:not(.stage-header-row-flex) {
+  background: rgba(255, 255, 255, 0.04);
+  transform: translateX(2px); /* Interactive slide micro-animation */
+}
+
+/* 📏 PURE COLUMN SIZES FOR PREDICTIONS GRID */
+.cell-match-info {
+  flex: 0 0 220px; /* Exact same width for Match header and cells */
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding-left: 0.5rem;
+  position: sticky;
+  left: 0; /* Locked sticky column */
+  background: #0f261d; /* Solid background hides scrolled text underneath */
+  z-index: 2;
+}
+
+/* Slightly lighter green overlay for sticky headers */
+.pred-header .cell-match-info {
+  background: #112d21;
+  z-index: 3;
+}
+
+.cell-player-pred {
+  flex: 0 0 65px; /* Monospace player columns matching headers */
+  text-align: center;
+  font-family: 'Oswald', sans-serif;
+  font-size: 14px;
+  font-weight: bold;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 34px;
+  border-radius: 6px;
+  margin: 0 2px;
+}
+
+.cell-player-header {
+  flex: 0 0 65px;
+  text-align: center;
+  font-family: 'Oswald', sans-serif;
+  font-weight: 500;
+  font-size: 11px;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--sage);
+  margin: 0 2px;
+}
+
+/* 🏆 STAGE HEADER ROW FLEX ACCENTS */
+.stage-header-row-flex {
+  display: flex;
+  align-items: center;
+  padding: 0.6rem 1rem;
+  background: rgba(26, 58, 42, 0.6) !important;
+  border-radius: 6px;
+  border: 1px solid rgba(244, 197, 66, 0.1);
+}
+
+.stage-header-title {
+  color: var(--gold) !important;
+  font-family: 'Oswald', sans-serif;
+  font-weight: 600;
+  font-size: 12px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  text-align: left;
+}
+
+/* 🎨 Color styling matching your spreadsheet scheme */
+.pred-home {
+  background-color: rgba(31, 194, 105, 0.12) !important; 
+  color: #2ecc71 !important;
+}
+
+.pred-away {
+  background-color: rgba(231, 76, 60, 0.1) !important; 
+  color: #e74c3c !important;
+}
+
+.pred-draw {
+  background-color: rgba(244, 197, 66, 0.1) !important; 
+  color: #f1c40f !important;
+}
+
 /* ── Mobile Responsive Override ── */
 @media (max-width: 680px) {
   .content-wrap {
