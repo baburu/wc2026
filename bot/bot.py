@@ -43,7 +43,15 @@ async def hl_get(session, path, params=None):
     url = f"{HIGHLIGHTLY_BASE}{path}"
     async with session.get(url, headers=hl_headers(), params=params, timeout=10) as r:
         if r.status == 200:
-            data = await r.json()
+            raw = await r.json()
+            # Normalise: always return {"data": [...]} shape
+            if isinstance(raw, list):
+                data = {"data": raw}
+            elif isinstance(raw, dict) and "data" not in raw:
+                # e.g. {"groups": [...], "league": {...}}
+                data = {"data": raw.get("groups") or raw.get("matches") or [], "_raw": raw}
+            else:
+                data = raw
             set_cache(cache_key, data)
             return data
         return None
@@ -380,26 +388,26 @@ async def on_message(message):
             if not data:
                 await msg.edit(content="ℹ️ No response from API.")
                 return
-            # Debug: show raw keys if data is unexpected
-            if not data.get("data"):
-                keys = list(data.keys()) if isinstance(data, dict) else str(type(data))
-                await msg.edit(content=f"ℹ️ Standings not available yet. (API keys: {keys})")
+            # Response uses "groups" key
+            groups = data.get("_raw", {}).get("groups") or data.get("data")
+            if not groups:
+                await msg.edit(content="ℹ️ Standings not available yet.")
                 return
-            groups = data["data"]
             await msg.delete()
-            for group in groups[:6]:  # send first 6 groups to avoid spam
+            for group in groups[:6]:
                 group_name = group.get("name", "Group")
                 embed = discord.Embed(title=f"📊 {group_name}", color=0x1a3a2a)
-                rows = group.get("standings", [])
+                # Try both "standings" and "teams" as possible keys
+                rows = group.get("standings") or group.get("teams") or []
                 lines = []
                 for row in rows:
-                    pos = row.get("position", "?")
-                    team = row.get("team", {}).get("name", "?")
+                    pos = row.get("position") or row.get("rank", "?")
+                    team = row.get("team", {}).get("name") or row.get("name", "?")
                     pts = row.get("points", 0)
-                    played = row.get("played", 0)
-                    gd = row.get("goalDifference", 0)
+                    played = row.get("played") or row.get("gamesPlayed", 0)
+                    gd = row.get("goalDifference") or row.get("goalsDiff", 0)
                     lines.append(f"`{pos}.` **{team}** | P:{played} GD:{gd:+d} Pts:**{pts}**")
-                embed.description = "\n".join(lines) if lines else "No data"
+                embed.description = "\n".join(lines) if lines else "No data yet"
                 await message.channel.send(embed=embed)
         except Exception as e:
             await msg.edit(content=f"❌ Error: {e}")
