@@ -6,7 +6,7 @@
   <title>World Cup 2026 — Predictions League</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@400;500;600&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=Anton&family=Plus+Jakarta+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="/ui/style.css" />
 </head>
 <body>
@@ -33,22 +33,23 @@
         <span class="badge">Live</span>
       </div>
 
-      <div class="tabs" role="tablist">
-        <button class="tab active" data-board="lead" role="tab">Overall</button>
-        <button class="tab" data-board="m1" role="tab">Matchday 1</button>
-        <button class="tab" data-board="m2" role="tab">Matchday 2</button>
-        <button class="tab" data-board="m3" role="tab">Matchday 3</button>
-        <button class="tab" data-board="m4" role="tab">Matchday 4</button>
-      </div>
+      <div class="leaderboard-surface">
+        <div class="tabs-row">
+          <div class="tabs" role="tablist">
+            <button class="tab active" data-board="lead" role="tab">Overall</button>
+            <button class="tab" data-board="m1" role="tab">Matchday 1</button>
+            <button class="tab" data-board="m2" role="tab">Matchday 2</button>
+            <button class="tab" data-board="m3" role="tab">Matchday 3</button>
+            <button class="tab" data-board="m4" role="tab">Matchday 4</button>
+          </div>
+          <button class="refresh-btn" id="refresh-btn">
+            <span id="refresh-icon">↻</span> Refresh
+          </button>
+        </div>
 
-      <div class="refresh-wrap">
-        <button class="refresh-btn" id="refresh-btn">
-          <span id="refresh-icon">↻</span> Refresh
-        </button>
-      </div>
-
-      <div id="board-container">
-        <div class="state-msg"><span class="icon">⏳</span>Loading scores…</div>
+        <div id="board-container">
+          <div class="state-msg"><span class="icon">⏳</span>Loading scores…</div>
+        </div>
       </div>
     </main>
 
