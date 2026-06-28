@@ -105,9 +105,9 @@ BADGE_SIZE = max(16, min(BADGE_SIZE, 120))
 BADGE_HEIGHT = max(16, min(BADGE_HEIGHT, 140))
 
 # --- Badge shadow config ---
-SHADOW_OFFSET_X = 2      # px shift right
-SHADOW_OFFSET_Y = 3      # px shift down
-SHADOW_BLUR     = 5      # gaussian blur radius
+SHADOW_OFFSET_X = 0      # 0 = uniform halo, no directional lean
+SHADOW_OFFSET_Y = 0      # 0 = uniform halo, no directional lean
+SHADOW_BLUR     = 5      # gaussian blur radius (spread of the halo)
 SHADOW_OPACITY  = 60     # 0-255, kept low so it stays soft/subtle
 # ---------------------------------------------------------------------
 
