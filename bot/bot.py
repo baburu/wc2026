@@ -177,17 +177,18 @@ def format_events(events):
 
 def get_match_phase(description):
     """Collapse Highlightly's state.description into live/ended/scheduled/other."""
-    live_states = {"First Half", "Second Half", "Half Time", "Extra Time",
-                   "Extra Time Half Time", "Penalty Shootout", "Break Time"}
-    ended_states = {"Finished", "Finished AET", "Finished AP",
-                     "Finished After Extra Time", "Finished After Penalties"}
+    live_states = {"first half", "second half", "half time", "extra time",
+                   "extra time half time", "penalty shootout", "break time"}
+    ended_states = {"finished", "finished aet", "finished ap",
+                     "finished after extra time", "finished after penalties"}
     if not description:
         return "scheduled"
-    if description in live_states:
+    d = description.strip().lower()
+    if d in live_states:
         return "live"
-    if description in ended_states:
+    if d in ended_states:
         return "ended"
-    if description == "Not Started":
+    if d == "not started":
         return "scheduled"
     return "other"
 
@@ -213,7 +214,7 @@ def format_match_embed(m, title=None):
         status_str = f"🔴 LIVE {clock}'" if clock else f"🔴 LIVE ({description})"
         color = 0xff0000
     elif phase == "ended":
-        status_str = "🏁 Full Time" if description == "Finished" else f"🏁 {description}"
+        status_str = "🏁 Full Time" if description.strip().lower() == "finished" else f"🏁 {description}"
         color = 0x00aa00
     elif phase == "scheduled":
         kickoff = m.get("date", "")
@@ -723,38 +724,43 @@ async def on_message(message):
         label = f"**{team_filter.title()}**'s" if team_filter else "the next"
         msg = await message.channel.send(f"⏳ Looking up {label} match...")
         try:
-            from datetime import date, timedelta
             now_unix = time.time()
-            candidates = []
             async with aiohttp.ClientSession() as session:
-                # Scan today through the next 14 days for the soonest not-started match.
-                for offset in range(0, 15):
-                    search_date = (date.today() + timedelta(days=offset)).isoformat()
-                    data = await hl_get(session, "/matches", {"date": search_date, "leagueId": WC_LEAGUE_ID})
-                    if not data:
+                data = await hl_get(session, "/matches", {
+                    "leagueId": WC_LEAGUE_ID,
+                    "season": 2026,
+                    "limit": 100,
+                })
+            all_matches = (data.get("data") if isinstance(data, dict) else data) or []
+            if not all_matches:
+                await msg.edit(content="ℹ️ No World Cup matches found yet — check back when the tournament begins!")
+                return
+
+            candidates = []
+            for m in all_matches:
+                if not isinstance(m, dict):
+                    continue
+                state = m.get("state", {}) or {}
+                if get_match_phase(state.get("description", "")) != "scheduled":
+                    continue
+                ts = kickoff_unix(m.get("date", ""))
+                if ts is None or ts < now_unix:
+                    continue
+                if team_filter:
+                    home = safe_name(m.get("homeTeam", {})).lower()
+                    away = safe_name(m.get("awayTeam", {})).lower()
+                    if team_filter not in home and team_filter not in away:
                         continue
-                    matches = data.get("data") if isinstance(data, dict) else data
-                    if not matches:
-                        continue
-                    for m in matches:
-                        if not isinstance(m, dict):
-                            continue
-                        state = m.get("state", {}) or {}
-                        if get_match_phase(state.get("description", "")) != "scheduled":
-                            continue
-                        ts = kickoff_unix(m.get("date", ""))
-                        if ts is None or ts < now_unix:
-                            continue
-                        if team_filter:
-                            home = safe_name(m.get("homeTeam", {})).lower()
-                            away = safe_name(m.get("awayTeam", {})).lower()
-                            if team_filter not in home and team_filter not in away:
-                                continue
-                        candidates.append((ts, m))
-                    # Once a day yields a candidate, that day's matches are fully scanned
-                    # above, so we can stop — no need to keep checking further-out days.
-                    if candidates:
-                        break
+                candidates.append((ts, m))
+
+            if not candidates:
+                if team_filter:
+                    await msg.edit(content=f"ℹ️ No upcoming match found for **{team_filter.title()}**.")
+                else:
+                    await msg.edit(content="ℹ️ No upcoming World Cup matches found.")
+                return
+            candidates.sort(key=lambda c: c[0])
+            ts, found = candidates[0]
             if not candidates:
                 if team_filter:
                     await msg.edit(content=f"ℹ️ No upcoming match found for **{team_filter.title()}** in the next two weeks.")
