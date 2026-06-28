@@ -904,8 +904,9 @@ footer {
    ═══════════════════════════════════════════════ */
 
 .ticker-bar {
-  position: relative;
-  z-index: 10;
+  position: sticky;
+  top: 0;
+  z-index: 100;
   display: flex;
   align-items: center;
   height: 36px;
@@ -1047,29 +1048,30 @@ footer {
   text-align: right;
 }
 
-/* Trend arrows */
-.ticker-trend {
+/* Overall accuracy — the "stock price" */
+.ticker-acc {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--cream);
+  letter-spacing: 0.04em;
+  min-width: 38px;
+  text-align: right;
+}
+
+/* Delta change — "+4.2%" / "-3.0%" */
+.ticker-delta {
+  font-family: 'JetBrains Mono', monospace;
   font-size: 10px;
   font-weight: 700;
-  line-height: 1;
-  display: inline-flex;
-  align-items: center;
-  gap: 2px;
-  font-family: 'JetBrains Mono', monospace;
-  font-size: 9px;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+  min-width: 52px;
 }
 
-.ticker-trend.up {
-  color: #1fc269;
-}
-
-.ticker-trend.down {
-  color: #ef3b46;
-}
-
-.ticker-trend.flat {
-  color: rgba(200, 216, 192, 0.4);
-}
+.ticker-delta.up   { color: #1fc269; }
+.ticker-delta.down { color: #ef3b46; }
+.ticker-delta.flat { color: rgba(200, 216, 192, 0.38); }
 
 /* Reduce motion */
 @media (prefers-reduced-motion: reduce) {

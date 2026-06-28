@@ -511,19 +511,20 @@ async function loadPredictions() {
 
 // ══════════════════════════════════════════════════════
 //  Performance Ticker Bar
-//  Trend source: scoring sheet (1 = correct, 0 = wrong)
-//  per match row. Rolling window approach:
-//  compare accuracy of last TREND_WINDOW predictions
-//  vs the preceding TREND_WINDOW predictions.
-//  ▲ green  = improving form
-//  ▼ red    = declining form
-//  — muted  = stable / not enough data yet
+//
+//  Display: stock-market style  BABU  62.5%  ▲+4.2%
+//
+//  "Price"  = overall prediction accuracy (all played matches)
+//  "Change" = accuracy of last 5 played matches minus
+//             accuracy of the 5 before that.
+//             Only rows where at least ONE player scored
+//             are counted as "played" — this prevents
+//             future/empty rows from dragging trends down.
 // ══════════════════════════════════════════════════════
 
-const TREND_WINDOW = 8; // matches to compare in each half
+const TICKER_WINDOW = 5; // matches per comparison half
 
 async function buildTickerData() {
-  // Fetch overall standings and the scoring sheet in parallel
   const [overallRes, scoringRes] = await Promise.all([
     fetch(ENDPOINTS['lead']).then(r => r.ok ? r.json() : null).catch(() => null),
     fetch(SCORING_SHEET_CSV_URL).catch(() => null),
@@ -531,80 +532,114 @@ async function buildTickerData() {
 
   if (!overallRes || !overallRes.ok || !overallRes.players.length) return null;
 
-  // Parse scoring sheet: build per-player sequences of 1s and 0s (chronological)
-  const playerScores = {};
+  // playerSeq: { name: [1,0,1,1,0,...] } — only PLAYED matches
+  const playerSeq = {};
 
   if (scoringRes && scoringRes.ok) {
     const csvText = await scoringRes.text();
     const rows = csvText.split(/\r?\n/).map(row => row.split(','));
 
-    // Row index 2 = header row with player names
+    // Row 2 (index 2) = header with player names
     const headerRow = rows[2] || [];
     const colToPlayer = {};
     headerRow.forEach((cell, idx) => {
       const name = cell.trim();
       if (PLAYER_INFO[name]) {
         colToPlayer[idx] = name;
-        playerScores[name] = [];
+        playerSeq[name]  = [];
       }
     });
 
-    // Rows from index 3 onward are match rows with 1/0 values
-    for (let r = 3; r < rows.length; r++) {
+    const playerCols = Object.keys(colToPlayer).map(Number);
+
+    // Walk every data row (skip header rows 0-2, skip last summary row)
+    for (let r = 3; r < rows.length - 1; r++) {
       const row = rows[r];
       if (!row || row.length < 3) continue;
-      Object.entries(colToPlayer).forEach(([idx, name]) => {
-        const val = (row[idx] || '').trim();
-        if (val === '1')      playerScores[name].push(1);
-        else if (val === '0') playerScores[name].push(0);
-        // blank or non-numeric = not played yet, skip
+
+      // KEY FIX: only treat this row as a "played" match if at least one
+      // player column contains exactly '1' or '0'. Rows full of blanks or
+      // decimals (summary rows) are silently skipped.
+      const isPlayedRow = playerCols.some(idx => {
+        const v = (row[idx] || '').trim();
+        return v === '1' || v === '0';
+      });
+      if (!isPlayedRow) continue;
+
+      playerCols.forEach(idx => {
+        const name = colToPlayer[idx];
+        const val  = (row[idx] || '').trim();
+        if (val === '1')      playerSeq[name].push(1);
+        else if (val === '0') playerSeq[name].push(0);
+        // blank in a played row = player didn't predict this match → skip
       });
     }
   }
 
-  function getTrend(name) {
-    const seq = playerScores[name] || [];
-    if (seq.length < TREND_WINDOW * 2) return 'flat';
-    const recent   = seq.slice(-TREND_WINDOW);
-    const previous = seq.slice(-TREND_WINDOW * 2, -TREND_WINDOW);
-    const recentAcc   = recent.reduce((a, b) => a + b, 0)   / recent.length;
-    const previousAcc = previous.reduce((a, b) => a + b, 0) / previous.length;
-    const delta = recentAcc - previousAcc;
-    if (delta >  0.05) return 'up';
-    if (delta < -0.05) return 'down';
-    return 'flat';
-  }
-
-  function getRecentAccuracy(name) {
-    const seq = playerScores[name] || [];
+  // Overall accuracy % across all played predictions
+  function getAccuracy(name) {
+    const seq = playerSeq[name] || [];
     if (!seq.length) return null;
-    const window = seq.slice(-TREND_WINDOW);
-    return Math.round(window.reduce((a, b) => a + b, 0) / window.length * 100) + '%';
+    return seq.reduce((a, b) => a + b, 0) / seq.length * 100;
   }
 
-  return overallRes.players.map((p, i) => ({
-    rank:      i + 1,
-    name:      p.name,
-    score:     p.score,
-    trend:     getTrend(p.name),
-    recentAcc: getRecentAccuracy(p.name),
-  }));
+  // Delta: last TICKER_WINDOW accuracy minus previous TICKER_WINDOW accuracy
+  // Returns { pct: number, trend: 'up'|'down'|'flat' }
+  function getDelta(name) {
+    const seq = playerSeq[name] || [];
+    if (seq.length < TICKER_WINDOW * 2) return { pct: null, trend: 'flat' };
+
+    const recent   = seq.slice(-TICKER_WINDOW);
+    const previous = seq.slice(-TICKER_WINDOW * 2, -TICKER_WINDOW);
+
+    const recentAcc   = recent.reduce((a,b) => a+b, 0)   / recent.length   * 100;
+    const previousAcc = previous.reduce((a,b) => a+b, 0) / previous.length * 100;
+    const delta = recentAcc - previousAcc;
+
+    return {
+      pct:   delta,
+      trend: delta > 2 ? 'up' : delta < -2 ? 'down' : 'flat',
+    };
+  }
+
+  return overallRes.players.map((p, i) => {
+    const acc   = getAccuracy(p.name);
+    const delta = getDelta(p.name);
+    return {
+      rank:  i + 1,
+      name:  p.name,
+      score: p.score,
+      acc,            // e.g. 62.5  (number, or null)
+      delta,          // { pct: 4.2, trend: 'up' }
+      played: (playerSeq[p.name] || []).length,
+    };
+  });
 }
 
-function renderTickerItem(player) {
-  const trendMap = {
-    up:   { icon: '▲', label: 'up',   cls: 'up' },
-    down: { icon: '▼', label: 'down', cls: 'down' },
-    flat: { icon: '—', label: 'flat', cls: 'flat' },
-  };
-  const t = trendMap[player.trend];
+function renderTickerItem(p) {
+  // Format accuracy like a stock price: "62.5%"
+  const accStr = p.acc !== null ? p.acc.toFixed(1) + '%' : '—';
 
-  const accLabel = player.recentAcc ? ` · last ${TREND_WINDOW}: ${player.recentAcc}` : '';
-  return `<span class="ticker-item" title="${player.name} — ${player.score} pts${accLabel}">
-    <span class="ticker-rank">${player.rank}</span>
-    <span class="ticker-name">${player.name}</span>
-    <span class="ticker-score">${player.score}</span>
-    <span class="ticker-trend ${t.cls}" aria-label="${t.label}">${t.icon}</span>
+  // Format delta like a market change: "+4.2%" / "-3.0%" / "~0.0%"
+  let deltaStr = '~0.0%';
+  let trendCls = 'flat';
+  let arrow    = '●';
+
+  if (p.delta.pct !== null) {
+    const sign = p.delta.pct >= 0 ? '+' : '';
+    deltaStr = sign + p.delta.pct.toFixed(1) + '%';
+    trendCls = p.delta.trend;
+    if (p.delta.trend === 'up')   arrow = '▲';
+    if (p.delta.trend === 'down') arrow = '▼';
+  }
+
+  const tooltip = `${p.name} · Overall: ${accStr} · Last ${TICKER_WINDOW}: ${deltaStr} · ${p.played} played`;
+
+  return `<span class="ticker-item" title="${tooltip}">
+    <span class="ticker-rank">${p.rank}</span>
+    <span class="ticker-name">${p.name}</span>
+    <span class="ticker-acc">${accStr}</span>
+    <span class="ticker-delta ${trendCls}">${arrow}${deltaStr}</span>
   </span>`;
 }
 
