@@ -190,7 +190,7 @@ nav {
   justify-content: center; /* 👈 Centering horizontally inside the wrapper */
   align-items: flex-start;
   gap: 2rem;
-  max-width: 900px; /* 👈 Set to a compact 900px to keep the Standings card and player badge sitting tight together */
+  max-width: 1050px; /* 👈 Wider so the standings card and player badge have more room */
   margin: 0 auto;
   padding: 2rem 1.25rem 4rem;
   transition: max-width 0.25s ease-in-out; /* Smooth transition when resizing views */
@@ -389,9 +389,10 @@ aside#card-panel {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 0.5rem 1.25rem 0;
+  padding: 0 1.25rem;
   border-bottom: 1px solid var(--card-line);
-  min-height: 52px;
+  min-height: 56px;
+  gap: 1rem;
 }
 
 .leaderboard-surface .tabs {
@@ -399,6 +400,9 @@ aside#card-panel {
   margin-bottom: 0;
   border-bottom: none;
   flex: 1;
+  align-self: stretch;
+  display: flex;
+  align-items: flex-end;
 }
 
 .leaderboard-surface #board-container {
@@ -410,7 +414,7 @@ aside#card-panel {
   display: flex;
   flex-direction: column;
   width: 100%;
-  max-width: 560px; /* Centers the list on the card cleanly */
+  max-width: 640px; /* Centers the list on the card cleanly */
   margin: 0 auto;
 }
 
@@ -470,12 +474,12 @@ aside#card-panel {
 
 /* 📏 PURE COLUMN LAYOUT: Guarantees perfect mathematical alignment */
 .cell-rank {
-  flex: 0 0 50px; /* Exact same width for header '#' and row numbers */
+  flex: 0 0 42px;
 }
 
 .cell-player {
   flex: 1;
-  max-width: 250px; /* Adjust this value to bring points closer or further away */
+  max-width: 160px; /* Tighter — keeps name and pts close together */
 }
 
 .cell-pts {
@@ -734,20 +738,22 @@ footer {
   border: 1px solid rgba(255,255,255,0.07);
   border-radius: 4px;
   padding: 2px 6px;
-  min-width: 28px;
+  min-width: 26px;
   text-align: center;
   letter-spacing: 0.04em;
 }
 
-/* Teams block — stacks home & away vertically */
-.m-teams-block {
+/* Fixture row — teams either side of VS badge */
+.m-fixture {
   display: flex;
-  flex-direction: column;
-  gap: 1px;
+  align-items: center;
+  gap: 6px;
+  flex: 1;
   overflow: hidden;
+  min-width: 0;
 }
 
-.m-team {
+.m-team-name {
   font-family: 'Plus Jakarta Sans', sans-serif;
   font-size: 11.5px;
   font-weight: 600;
@@ -755,17 +761,25 @@ footer {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  letter-spacing: 0.01em;
+  flex: 1;
+  min-width: 0;
 }
 
-.m-vs {
-  font-family: 'JetBrains Mono', monospace;
+.m-team-name:last-child {
+  text-align: right;
+}
+
+.m-vs-badge {
+  flex-shrink: 0;
+  font-family: 'Oswald', sans-serif;
   font-size: 9px;
-  color: var(--muted);
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  line-height: 1;
-  padding-left: 22px; /* indent past flag width */
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  color: var(--gold);
+  background: rgba(244, 197, 66, 0.12);
+  border: 1px solid rgba(244, 197, 66, 0.22);
+  border-radius: 3px;
+  padding: 2px 5px;
 }
 
 /* Slightly lighter green overlay for sticky headers */

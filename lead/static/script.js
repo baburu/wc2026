@@ -464,15 +464,13 @@ async function loadPredictions() {
       if (matchNum && !isNaN(matchNum)) {
         const actualOutcome = outcomeMap[matchNum] || ''; // e.g. "1", "2", "X", or "" if not played
 
-        const flag1 = getFlag(team1);
-        const flag2 = getFlag(team2);
         html += `<div class="pred-row">
                    <div class="cell-match-info">
                      <span class="m-num">${matchNum}</span>
-                     <div class="m-teams-block">
-                       <span class="m-team">${flag1} ${escHtml(team1)}</span>
-                       <span class="m-vs">vs</span>
-                       <span class="m-team">${flag2} ${escHtml(team2)}</span>
+                     <div class="m-fixture">
+                       <span class="m-team-name">${escHtml(team1)}</span>
+                       <span class="m-vs-badge">VS</span>
+                       <span class="m-team-name">${escHtml(team2)}</span>
                      </div>
                    </div>`;
 
