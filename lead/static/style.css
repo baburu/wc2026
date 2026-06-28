@@ -749,6 +749,7 @@ footer {
 .m-fixture {
   display: flex;
   align-items: center;
+  margin-left:5px;
   gap: 6px;
   flex: 1;
   overflow: hidden;
