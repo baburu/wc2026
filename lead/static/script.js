@@ -552,14 +552,21 @@ async function buildTickerData() {
 
     const playerCols = Object.keys(colToPlayer).map(Number);
 
-    // Walk every data row (skip header rows 0-2, skip last summary row)
-    for (let r = 3; r < rows.length - 1; r++) {
+    // Walk every data row (skip header rows 0-2)
+    // Skip any row whose first non-empty cell is "Total" or non-numeric (summary rows)
+    for (let r = 3; r < rows.length; r++) {
       const row = rows[r];
       if (!row || row.length < 3) continue;
 
-      // KEY FIX: only treat this row as a "played" match if at least one
-      // player column contains exactly '1' or '0'. Rows full of blanks or
-      // decimals (summary rows) are silently skipped.
+      // Skip summary/total rows — first column contains text like "Total"
+      const firstCell = (row[0] || '').trim().toLowerCase();
+      if (firstCell === 'total' || firstCell === 'average' || firstCell === '') {
+        // also skip if it's a decimal/percentage summary row
+        const secondCell = (row[1] || '').trim();
+        if (!secondCell || isNaN(secondCell)) continue;
+      }
+
+      // Only process rows that have at least one strict '1' or '0' in a player column
       const isPlayedRow = playerCols.some(idx => {
         const v = (row[idx] || '').trim();
         return v === '1' || v === '0';
@@ -569,10 +576,9 @@ async function buildTickerData() {
       playerCols.forEach(idx => {
         const name = colToPlayer[idx];
         const val  = (row[idx] || '').trim();
-        if (val === '1')      playerSeq[name].push(1);
-        else if (val === '0') playerSeq[name].push(0);
-        // blank in a played row = missed prediction, treat as 0
-        else                  playerSeq[name].push(0);
+        // Only count strict '1' or '0' — ignore empty, spaces, decimals, anything else
+        if (val === '1') playerSeq[name].push(1);
+        if (val === '0') playerSeq[name].push(0);
       });
     }
 
