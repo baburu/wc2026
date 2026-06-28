@@ -522,7 +522,7 @@ async function loadPredictions() {
 //             future/empty rows from dragging trends down.
 // ══════════════════════════════════════════════════════
 
-const TICKER_WINDOW = 5; // matches per comparison half
+const TICKER_WINDOW = 3; // matches per comparison half (last 3 vs previous 3)
 
 async function buildTickerData() {
   const [overallRes, scoringRes] = await Promise.all([
@@ -571,9 +571,14 @@ async function buildTickerData() {
         const val  = (row[idx] || '').trim();
         if (val === '1')      playerSeq[name].push(1);
         else if (val === '0') playerSeq[name].push(0);
-        // blank in a played row = player didn't predict this match → skip
+        // blank in a played row = missed prediction, treat as 0
+        else                  playerSeq[name].push(0);
       });
     }
+
+    console.log('🎯 Ticker sequences:', Object.fromEntries(
+      Object.entries(playerSeq).map(([k,v]) => [k, `${v.length} played, last6: [${v.slice(-6)}]`])
+    ));
   }
 
   // Overall accuracy % across all played predictions
@@ -598,7 +603,7 @@ async function buildTickerData() {
 
     return {
       pct:   delta,
-      trend: delta > 2 ? 'up' : delta < -2 ? 'down' : 'flat',
+      trend: delta > 0 ? 'up' : delta < 0 ? 'down' : 'flat',
     };
   }
 
