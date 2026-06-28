@@ -13,7 +13,7 @@ const SCORING_SHEET_CSV_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1v
 const PREDICTIONS_SHEET_CSV_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vT8fEdr0djoTa4bc8diSdwH2xSDJ4JTlNgHUWho8lQ5btMR9Joe3sXhZPP72oTSE9MBdoYKrY4DlFl9/pub?gid=793952308&single=true&output=csv';
 
 // ⚽ Matches tab CSV (for live outcome colour-coding in the Predictions matrix):
-const MATCHES_SHEET_CSV_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vT8fEdr0djoTa4bc8diSdwH2xSDJ4JTlNgHUWho8lQ5btMR9Joe3sXhZPP72oTSE9MBdoYKrY4DlFl9/pub?gid=1441917752&single=true&output=csv';
+const MATCHES_SHEET_CSV_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vT8fEdr0djoTa4bc8diSdwH2xSDJ4JTlNgHUWho8lQ5btMR9Joe3sXhZPP72oTSE9MBdoYKrY4DlFl9/pub?gid=0&single=true&output=csv';
 
 const MEDALS = { 1: '🥇', 2: '🥈', 3: '🥉' };
 const CARD_URL = 'https://wc2026-i9es.onrender.com/card';
@@ -330,6 +330,9 @@ btnStandings.addEventListener('click', () => {
   btnPredictions.classList.remove('active');
   viewStandings.style.display = 'block';
   viewPredictions.style.display = 'none';
+  // Restore compact layout and show card panel for standings
+  document.querySelector('.content-wrap').classList.remove('wide-layout');
+  document.getElementById('card-panel').style.display = '';
 });
 
 btnPredictions.addEventListener('click', () => {
@@ -337,28 +340,49 @@ btnPredictions.addEventListener('click', () => {
   btnStandings.classList.remove('active');
   viewStandings.style.display = 'none';
   viewPredictions.style.display = 'block';
+  // Expand layout and hide card panel for the wide predictions matrix
+  document.querySelector('.content-wrap').classList.add('wide-layout');
+  document.getElementById('card-panel').style.display = 'none';
   loadPredictions();
 });
 
 // Parses the Matches CSV and returns a map of { matchNumber -> outcome }
-// Outcome column is "G" (index 6 in 0-based CSV), values are "1", "2", or "X"
+// Auto-detects the "Outcome" and "Match" column positions from headers
 async function fetchMatchOutcomes() {
-  const outcomeMap = {}; // { '1': '1', '2': 'X', ... }
+  const outcomeMap = {};
   try {
     const res = await fetch(MATCHES_SHEET_CSV_URL);
     if (!res.ok) return outcomeMap;
     const csvText = await res.text();
     const rows = csvText.split(/\r?\n/).map(row => row.split(','));
 
+    // Log sample rows to console for debugging
+    console.log('📋 Matches CSV sample rows:');
+    rows.slice(0, 6).forEach((r, i) => console.log('Row ' + i + ':', JSON.stringify(r)));
+
+    // Auto-detect Outcome and Match column indices from any header row in first 10
+    let outcomeColIndex = 6; // fallback: column G
+    let matchColIndex   = 1; // fallback: column B
+    for (let i = 0; i < Math.min(rows.length, 10); i++) {
+      const row = rows[i];
+      const oIdx = row.findIndex(c => c.trim().toLowerCase() === 'outcome');
+      const mIdx = row.findIndex(c => c.trim().toLowerCase() === 'match');
+      if (oIdx !== -1) { outcomeColIndex = oIdx; }
+      if (mIdx !== -1) { matchColIndex   = mIdx; }
+      if (oIdx !== -1 && mIdx !== -1) break;
+    }
+    console.log('✅ Match col index:', matchColIndex, '| Outcome col index:', outcomeColIndex);
+
     for (let i = 0; i < rows.length; i++) {
       const row = rows[i];
-      if (!row || row.length < 7) continue;
-      const matchNum = row[1] ? row[1].trim() : '';
-      const outcome  = row[6] ? row[6].trim().toUpperCase() : '';
-      if (matchNum && !isNaN(matchNum) && outcome !== '') {
+      if (!row || row.length < 3) continue;
+      const matchNum = row[matchColIndex] ? row[matchColIndex].trim() : '';
+      const outcome  = row[outcomeColIndex] ? row[outcomeColIndex].trim().toUpperCase() : '';
+      if (matchNum && !isNaN(matchNum) && (outcome === '1' || outcome === '2' || outcome === 'X')) {
         outcomeMap[matchNum] = outcome;
       }
     }
+    console.log('⚽ Final outcome map:', outcomeMap);
   } catch (err) {
     console.warn('⚠️ Could not fetch match outcomes:', err);
   }
