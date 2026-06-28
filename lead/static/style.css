@@ -190,7 +190,7 @@ nav {
   justify-content: center; /* 👈 Centering horizontally inside the wrapper */
   align-items: flex-start;
   gap: 2rem;
-  max-width: 1050px; /* 👈 Wider so the standings card and player badge have more room */
+  max-width: 990px; /* 👈 Wider so the standings card and player badge have more room */
   margin: 0 auto;
   padding: 2rem 1.25rem 4rem;
   transition: max-width 0.25s ease-in-out; /* Smooth transition when resizing views */
@@ -402,7 +402,7 @@ aside#card-panel {
   flex: 1;
   align-self: stretch;
   display: flex;
-  align-items: flex-end;
+  align-items: center;
 }
 
 .leaderboard-surface #board-container {
