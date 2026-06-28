@@ -510,19 +510,23 @@ async function loadPredictions() {
 }
 
 // ══════════════════════════════════════════════════════
-//  Performance Ticker Bar
+//  Performance Ticker Bar — IPO Stock Market Model
 //
-//  Display: stock-market style  BABU  62.5%  ▲+4.2%
+//  Every player starts at $100.00 (IPO price).
+//  Correct prediction  → +$1.00
+//  Wrong prediction    → −$1.00
 //
-//  "Price"  = overall prediction accuracy (all played matches)
-//  "Change" = accuracy of last 5 played matches minus
-//             accuracy of the 5 before that.
-//             Only rows where at least ONE player scored
-//             are counted as "played" — this prevents
-//             future/empty rows from dragging trends down.
+//  Display:  BABU  $124.00  ▲+2.41%
+//
+//  "Price"  = $100 + (rights − wrongs)  e.g. $124.00
+//  "Change" = % move over last 5 predictions:
+//             ( net_last5 / price_before_last5 ) * 100
+//             This is a true financial % — no div-by-zero
+//             because the base is always ≥ $100 - n, never 0
 // ══════════════════════════════════════════════════════
 
-const TICKER_WINDOW = 3; // matches per comparison half (last 3 vs previous 3)
+const IPO_PRICE    = 100; // baseline share price
+const TICKER_WINDOW = 5;  // last N predictions for the % change
 
 async function buildTickerData() {
   const [overallRes, scoringRes] = await Promise.all([
@@ -532,14 +536,13 @@ async function buildTickerData() {
 
   if (!overallRes || !overallRes.ok || !overallRes.players.length) return null;
 
-  // playerSeq: { name: [1,0,1,1,0,...] } — only PLAYED matches
+  // playerSeq: { name: [1,0,1,1,0,...] } — only actual predictions (strict 1/0)
   const playerSeq = {};
 
   if (scoringRes && scoringRes.ok) {
     const csvText = await scoringRes.text();
     const rows = csvText.split(/\r?\n/).map(row => row.split(','));
 
-    // Row 2 (index 2) = header with player names
     const headerRow = rows[2] || [];
     const colToPlayer = {};
     headerRow.forEach((cell, idx) => {
@@ -552,21 +555,11 @@ async function buildTickerData() {
 
     const playerCols = Object.keys(colToPlayer).map(Number);
 
-    // Walk every data row (skip header rows 0-2)
-    // Skip any row whose first non-empty cell is "Total" or non-numeric (summary rows)
     for (let r = 3; r < rows.length; r++) {
       const row = rows[r];
       if (!row || row.length < 3) continue;
 
-      // Skip summary/total rows — first column contains text like "Total"
-      const firstCell = (row[0] || '').trim().toLowerCase();
-      if (firstCell === 'total' || firstCell === 'average' || firstCell === '') {
-        // also skip if it's a decimal/percentage summary row
-        const secondCell = (row[1] || '').trim();
-        if (!secondCell || isNaN(secondCell)) continue;
-      }
-
-      // Only process rows that have at least one strict '1' or '0' in a player column
+      // Skip summary/total rows
       const isPlayedRow = playerCols.some(idx => {
         const v = (row[idx] || '').trim();
         return v === '1' || v === '0';
@@ -576,81 +569,104 @@ async function buildTickerData() {
       playerCols.forEach(idx => {
         const name = colToPlayer[idx];
         const val  = (row[idx] || '').trim();
-        // Only count strict '1' or '0' — ignore empty, spaces, decimals, anything else
         if (val === '1') playerSeq[name].push(1);
         if (val === '0') playerSeq[name].push(0);
+        // blank = no prediction made → skip, don't penalise
       });
     }
 
-    console.log('🎯 Ticker sequences:', Object.fromEntries(
-      Object.entries(playerSeq).map(([k,v]) => [k, `${v.length} played, last6: [${v.slice(-6)}]`])
+    console.log('📈 Ticker IPO sequences:', Object.fromEntries(
+      Object.entries(playerSeq).map(([k,v]) => {
+        const net = v.reduce((a,b) => a + (b===1?1:-1), 0);
+        return [k, `${v.length} played · price $${(IPO_PRICE + net).toFixed(2)} · last5: [${v.slice(-5)}]`];
+      })
     ));
   }
 
-  // Overall accuracy % across all played predictions
-  function getAccuracy(name) {
+  // Current stock price = IPO + net (+1 per right, -1 per wrong)
+  function getPrice(name) {
     const seq = playerSeq[name] || [];
-    if (!seq.length) return null;
-    return seq.reduce((a, b) => a + b, 0) / seq.length * 100;
+    if (!seq.length) return IPO_PRICE;
+    const net = seq.reduce((a, b) => a + (b === 1 ? 1 : -1), 0);
+    return IPO_PRICE + net;
   }
 
-  // Delta: last TICKER_WINDOW accuracy minus previous TICKER_WINDOW accuracy
-  // Returns { pct: number, trend: 'up'|'down'|'flat' }
-  function getDelta(name) {
+  // % change over last TICKER_WINDOW predictions
+  // = (net_of_last_N / price_before_last_N) * 100
+  // Base price is always ≥ ~$70 in practice — never zero, no math issues
+  function getChange(name) {
     const seq = playerSeq[name] || [];
-    if (seq.length < TICKER_WINDOW * 2) return { pct: null, trend: 'flat' };
+    if (seq.length < TICKER_WINDOW + 1) return { pct: null, trend: 'flat' };
 
-    const recent   = seq.slice(-TICKER_WINDOW);
-    const previous = seq.slice(-TICKER_WINDOW * 2, -TICKER_WINDOW);
+    const window   = seq.slice(-TICKER_WINDOW);
+    const netMoves = window.reduce((a, b) => a + (b === 1 ? 1 : -1), 0);
 
-    const recentAcc   = recent.reduce((a,b) => a+b, 0)   / recent.length   * 100;
-    const previousAcc = previous.reduce((a,b) => a+b, 0) / previous.length * 100;
-    const delta = recentAcc - previousAcc;
+    // Price just before the window started
+    const before    = seq.slice(0, -TICKER_WINDOW);
+    const beforeNet = before.reduce((a, b) => a + (b === 1 ? 1 : -1), 0);
+    const basePrice = IPO_PRICE + beforeNet;
+
+    const pct = (netMoves / basePrice) * 100;
 
     return {
-      pct:   delta,
-      trend: delta > 0 ? 'up' : delta < 0 ? 'down' : 'flat',
+      pct,
+      net:   netMoves,
+      trend: netMoves > 0 ? 'up' : netMoves < 0 ? 'down' : 'flat',
     };
   }
 
   return overallRes.players.map((p, i) => {
-    const acc   = getAccuracy(p.name);
-    const delta = getDelta(p.name);
+    const price  = getPrice(p.name);
+    const change = getChange(p.name);
     return {
-      rank:  i + 1,
-      name:  p.name,
-      score: p.score,
-      acc,            // e.g. 62.5  (number, or null)
-      delta,          // { pct: 4.2, trend: 'up' }
+      rank:   i + 1,
+      name:   p.name,
+      price,                    // e.g. 124.00
+      ytd:    price - IPO_PRICE, // net profit vs IPO e.g. +24
+      change,                   // { pct, net, trend }
       played: (playerSeq[p.name] || []).length,
     };
   });
 }
 
 function renderTickerItem(p) {
-  // Format accuracy like a stock price: "62.5%"
-  const accStr = p.acc !== null ? p.acc.toFixed(1) + '%' : '—';
+  // "Stock price"  →  $124.00
+  const priceStr = '$' + p.price.toFixed(2);
 
-  // Format delta like a market change: "+4.2%" / "-3.0%" / "~0.0%"
-  let deltaStr = '~0.0%';
-  let trendCls = 'flat';
-  let arrow    = '●';
+  // YTD return  →  +24.00%
+  const ytdPct    = ((p.price - IPO_PRICE) / IPO_PRICE) * 100;
+  const ytdSign   = ytdPct >= 0 ? '+' : '';
+  const ytdStr    = ytdSign + ytdPct.toFixed(2) + '%';
+  const ytdCls    = ytdPct > 0 ? 'up' : ytdPct < 0 ? 'down' : 'flat';
 
-  if (p.delta.pct !== null) {
-    const sign = p.delta.pct >= 0 ? '+' : '';
-    deltaStr = sign + p.delta.pct.toFixed(1) + '%';
-    trendCls = p.delta.trend;
-    if (p.delta.trend === 'up')   arrow = '▲';
-    if (p.delta.trend === 'down') arrow = '▼';
+  // Recent change  →  ▲+2.41%  or  ▼-1.94%
+  let changeStr = '';
+  let changeCls = 'flat';
+  let arrow     = '●';
+
+  if (p.change.pct !== null) {
+    const sign = p.change.pct >= 0 ? '+' : '';
+    changeStr  = sign + p.change.pct.toFixed(2) + '%';
+    changeCls  = p.change.trend;
+    arrow      = p.change.trend === 'up' ? '▲' : p.change.trend === 'down' ? '▼' : '●';
   }
 
-  const tooltip = `${p.name} · Overall: ${accStr} · Last ${TICKER_WINDOW}: ${deltaStr} · ${p.played} played`;
+  const tooltip = [
+    p.name,
+    `Price: ${priceStr}`,
+    `YTD: ${ytdStr}`,
+    p.change.pct !== null ? `Last ${TICKER_WINDOW}: ${arrow}${changeStr}` : '',
+    `${p.played} predictions`,
+  ].filter(Boolean).join(' · ');
 
   return `<span class="ticker-item" title="${tooltip}">
     <span class="ticker-rank">${p.rank}</span>
     <span class="ticker-name">${p.name}</span>
-    <span class="ticker-acc">${accStr}</span>
-    <span class="ticker-delta ${trendCls}">${arrow}${deltaStr}</span>
+    <span class="ticker-price">${priceStr}</span>
+    <span class="ticker-ytd ${ytdCls}">${ytdSign}${ytdPct.toFixed(2)}%</span>
+    ${p.change.pct !== null
+      ? `<span class="ticker-delta ${changeCls}">${arrow}${changeStr}</span>`
+      : ''}
   </span>`;
 }
 
