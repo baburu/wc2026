@@ -508,3 +508,127 @@ async function loadPredictions() {
       </div>`;
   }
 }
+
+// ══════════════════════════════════════════════════════
+//  Performance Ticker Bar
+//  Trend source: scoring sheet (1 = correct, 0 = wrong)
+//  per match row. Rolling window approach:
+//  compare accuracy of last TREND_WINDOW predictions
+//  vs the preceding TREND_WINDOW predictions.
+//  ▲ green  = improving form
+//  ▼ red    = declining form
+//  — muted  = stable / not enough data yet
+// ══════════════════════════════════════════════════════
+
+const TREND_WINDOW = 8; // matches to compare in each half
+
+async function buildTickerData() {
+  // Fetch overall standings and the scoring sheet in parallel
+  const [overallRes, scoringRes] = await Promise.all([
+    fetch(ENDPOINTS['lead']).then(r => r.ok ? r.json() : null).catch(() => null),
+    fetch(SCORING_SHEET_CSV_URL).catch(() => null),
+  ]);
+
+  if (!overallRes || !overallRes.ok || !overallRes.players.length) return null;
+
+  // Parse scoring sheet: build per-player sequences of 1s and 0s (chronological)
+  const playerScores = {};
+
+  if (scoringRes && scoringRes.ok) {
+    const csvText = await scoringRes.text();
+    const rows = csvText.split(/\r?\n/).map(row => row.split(','));
+
+    // Row index 2 = header row with player names
+    const headerRow = rows[2] || [];
+    const colToPlayer = {};
+    headerRow.forEach((cell, idx) => {
+      const name = cell.trim();
+      if (PLAYER_INFO[name]) {
+        colToPlayer[idx] = name;
+        playerScores[name] = [];
+      }
+    });
+
+    // Rows from index 3 onward are match rows with 1/0 values
+    for (let r = 3; r < rows.length; r++) {
+      const row = rows[r];
+      if (!row || row.length < 3) continue;
+      Object.entries(colToPlayer).forEach(([idx, name]) => {
+        const val = (row[idx] || '').trim();
+        if (val === '1')      playerScores[name].push(1);
+        else if (val === '0') playerScores[name].push(0);
+        // blank or non-numeric = not played yet, skip
+      });
+    }
+  }
+
+  function getTrend(name) {
+    const seq = playerScores[name] || [];
+    if (seq.length < TREND_WINDOW * 2) return 'flat';
+    const recent   = seq.slice(-TREND_WINDOW);
+    const previous = seq.slice(-TREND_WINDOW * 2, -TREND_WINDOW);
+    const recentAcc   = recent.reduce((a, b) => a + b, 0)   / recent.length;
+    const previousAcc = previous.reduce((a, b) => a + b, 0) / previous.length;
+    const delta = recentAcc - previousAcc;
+    if (delta >  0.05) return 'up';
+    if (delta < -0.05) return 'down';
+    return 'flat';
+  }
+
+  function getRecentAccuracy(name) {
+    const seq = playerScores[name] || [];
+    if (!seq.length) return null;
+    const window = seq.slice(-TREND_WINDOW);
+    return Math.round(window.reduce((a, b) => a + b, 0) / window.length * 100) + '%';
+  }
+
+  return overallRes.players.map((p, i) => ({
+    rank:      i + 1,
+    name:      p.name,
+    score:     p.score,
+    trend:     getTrend(p.name),
+    recentAcc: getRecentAccuracy(p.name),
+  }));
+}
+
+function renderTickerItem(player) {
+  const trendMap = {
+    up:   { icon: '▲', label: 'up',   cls: 'up' },
+    down: { icon: '▼', label: 'down', cls: 'down' },
+    flat: { icon: '—', label: 'flat', cls: 'flat' },
+  };
+  const t = trendMap[player.trend];
+
+  const accLabel = player.recentAcc ? ` · last ${TREND_WINDOW}: ${player.recentAcc}` : '';
+  return `<span class="ticker-item" title="${player.name} — ${player.score} pts${accLabel}">
+    <span class="ticker-rank">${player.rank}</span>
+    <span class="ticker-name">${player.name}</span>
+    <span class="ticker-score">${player.score}</span>
+    <span class="ticker-trend ${t.cls}" aria-label="${t.label}">${t.icon}</span>
+  </span>`;
+}
+
+async function initTicker() {
+  const track = document.getElementById('ticker-track');
+  if (!track) return;
+
+  const players = await buildTickerData();
+
+  if (!players || !players.length) {
+    track.innerHTML = `<span class="ticker-loading">No data yet</span>`;
+    return;
+  }
+
+  const html = players.map(renderTickerItem).join('');
+  // Duplicate for seamless infinite scroll
+  track.innerHTML = html + html;
+  track.classList.add('running');
+
+  // Adjust speed based on content width so it always feels smooth
+  const totalW = track.scrollWidth / 2; // half = one full set
+  const speed = Math.max(30, Math.min(60, totalW / 80)); // px/s → seconds
+  track.style.animationDuration = speed + 's';
+}
+
+// Boot the ticker alongside the rest of the page
+initTicker();

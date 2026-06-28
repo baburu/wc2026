@@ -899,3 +899,184 @@ footer {
   .player-name { font-size: 14px; }
   .score-cell { font-size: 1.2rem; }
 }
+/* ═══════════════════════════════════════════════
+   ── Performance Ticker Bar ──
+   ═══════════════════════════════════════════════ */
+
+.ticker-bar {
+  position: relative;
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  height: 36px;
+  background: rgba(13, 34, 25, 0.92);
+  border-top: 1px solid rgba(41, 72, 58, 0.9);
+  border-bottom: 1px solid rgba(41, 72, 58, 0.9);
+  overflow: hidden;
+  backdrop-filter: blur(6px);
+}
+
+/* "LIVE" pill label on the left */
+.ticker-label {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 0 12px 0 14px;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.22em;
+  color: #07130f;
+  background: #f4c542;
+  height: 100%;
+  white-space: nowrap;
+}
+
+.ticker-label::before {
+  content: '';
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #07130f;
+  animation: tickerDot 1.4s ease-in-out infinite;
+}
+
+@keyframes tickerDot {
+  0%, 100% { opacity: 0.35; transform: scale(0.75); }
+  50%       { opacity: 1;    transform: scale(1.2); }
+}
+
+/* Scrolling viewport — clips overflow and fades edges */
+.ticker-viewport {
+  flex: 1;
+  overflow: hidden;
+  position: relative;
+  height: 100%;
+  /* Fade edges */
+  -webkit-mask-image: linear-gradient(
+    90deg,
+    transparent 0px,
+    black 28px,
+    black calc(100% - 28px),
+    transparent 100%
+  );
+  mask-image: linear-gradient(
+    90deg,
+    transparent 0px,
+    black 28px,
+    black calc(100% - 28px),
+    transparent 100%
+  );
+}
+
+/* The scrolling track — doubled content for seamless loop */
+.ticker-track {
+  display: flex;
+  align-items: center;
+  white-space: nowrap;
+  height: 100%;
+  /* animation applied via JS once content is ready */
+  will-change: transform;
+}
+
+@keyframes tickerScroll {
+  0%   { transform: translateX(0); }
+  100% { transform: translateX(-50%); }
+}
+
+.ticker-track.running {
+  animation: tickerScroll 40s linear infinite;
+}
+
+.ticker-track:hover {
+  animation-play-state: paused;
+}
+
+/* Loading placeholder */
+.ticker-loading {
+  padding: 0 20px;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+  color: var(--muted);
+  opacity: 0.6;
+}
+
+/* Individual player chip */
+.ticker-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0 18px 0 0;
+  cursor: default;
+}
+
+/* Separator dot between items */
+.ticker-item::before {
+  content: '·';
+  color: rgba(41, 72, 58, 0.8);
+  font-size: 16px;
+  padding-right: 18px;
+}
+
+.ticker-rank {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 9px;
+  color: rgba(200, 216, 192, 0.4);
+  letter-spacing: 0.05em;
+  min-width: 14px;
+}
+
+.ticker-name {
+  font-family: 'Oswald', 'Anton', sans-serif;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--cream);
+}
+
+.ticker-score {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  font-weight: 700;
+  color: #f4c542;
+  letter-spacing: 0.04em;
+  min-width: 20px;
+  text-align: right;
+}
+
+/* Trend arrows */
+.ticker-trend {
+  font-size: 10px;
+  font-weight: 700;
+  line-height: 1;
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 9px;
+}
+
+.ticker-trend.up {
+  color: #1fc269;
+}
+
+.ticker-trend.down {
+  color: #ef3b46;
+}
+
+.ticker-trend.flat {
+  color: rgba(200, 216, 192, 0.4);
+}
+
+/* Reduce motion */
+@media (prefers-reduced-motion: reduce) {
+  .ticker-track.running {
+    animation: none;
+  }
+  .ticker-label::before {
+    animation: none;
+  }
+}
