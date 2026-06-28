@@ -2,6 +2,7 @@ import os
 import time
 import aiohttp
 import discord
+from datetime import datetime, timezone
 
 TOKEN = os.environ.get("DISCORD_BOT_TOKEN")
 LEADERBOARD_BASE_URL = "https://wc2026-leaderboard.onrender.com"
@@ -78,6 +79,65 @@ TEAM_FLAGS = {
 
 def team_flag(name):
     return TEAM_FLAGS.get((name or "").strip().lower(), "")
+
+def kickoff_unix(date_str):
+    """Parse Highlightly's ISO date string (e.g. '2026-06-28T19:00:00.000Z') into a unix timestamp."""
+    if not date_str:
+        return None
+    try:
+        cleaned = date_str.replace("Z", "+00:00")
+        dt = datetime.fromisoformat(cleaned)
+        if dt.tzinfo is None:
+            dt = dt.replace(tzinfo=timezone.utc)
+        return int(dt.timestamp())
+    except (ValueError, TypeError):
+        return None
+
+def discord_ts(date_str, style="F"):
+    """Build a Discord timestamp tag, e.g. <t:1234567890:F>, that renders in each
+    user's own timezone/locale. Falls back to the raw string if parsing fails.
+    Styles: t/T (time), d/D (date), f/F (date+time), R (relative, e.g. 'in 3 hours')."""
+    ts = kickoff_unix(date_str)
+    if ts is None:
+        return date_str or "TBD"
+    return f"<t:{ts}:{style}>"
+
+def format_venue(venue):
+    """venue: {'city': ..., 'name': ..., 'country': ..., 'capacity': ...}"""
+    if not isinstance(venue, dict):
+        return None
+    name = venue.get("name")
+    city = venue.get("city")
+    country = venue.get("country")
+    capacity = venue.get("capacity")
+    if not (name or city):
+        return None
+    line = name or "Unknown venue"
+    location_bits = [b for b in (city, country) if b]
+    if location_bits:
+        line += f" — {', '.join(location_bits)}"
+    if capacity:
+        line += f"\nCapacity: {capacity}"
+    return line
+
+def format_forecast(forecast):
+    """forecast: {'status': ..., 'temperature': ...}"""
+    if not isinstance(forecast, dict):
+        return None
+    status = forecast.get("status")
+    temp = forecast.get("temperature")
+    if not (status or temp):
+        return None
+    icon = "🌦️"
+    s = (status or "").lower()
+    if "clear" in s or "sun" in s:
+        icon = "☀️" if "night" not in s else "🌙"
+    elif "cloud" in s:
+        icon = "☁️"
+    elif "rain" in s:
+        icon = "🌧️"
+    parts = [p for p in (status, temp) if p]
+    return f"{icon} {' — '.join(parts)}"
 
 def safe_name(val, default=""):
     """Extract a name whether val is a dict like {'name': 'France'} or already a string."""
@@ -157,7 +217,7 @@ def format_match_embed(m, title=None):
         color = 0x00aa00
     elif phase == "scheduled":
         kickoff = m.get("date", "")
-        status_str = f"⏳ {kickoff[:16] if kickoff else 'Scheduled'}"
+        status_str = f"⏳ {discord_ts(kickoff, 'F')} ({discord_ts(kickoff, 'R')})" if kickoff else "⏳ Scheduled"
         color = 0x888888
     else:
         status_str = description or "Unknown"
@@ -178,6 +238,14 @@ def format_match_embed(m, title=None):
         event_lines = format_events(events)
         if event_lines:
             embed.add_field(name="📋 Events", value="\n".join(event_lines[:20]), inline=False)
+
+    # Venue & weather (Highlightly returns these on /matches/{id} detail responses)
+    venue_line = format_venue(m.get("venue"))
+    if venue_line:
+        embed.add_field(name="🏟️ Venue", value=venue_line, inline=True)
+    forecast_line = format_forecast(m.get("forecast"))
+    if forecast_line:
+        embed.add_field(name="Weather", value=forecast_line, inline=True)
 
     group = m.get("round", "")
     if isinstance(group, dict):
@@ -287,7 +355,7 @@ async def on_message(message):
                     indicator = "🏁 FT"
                 elif phase == "scheduled":
                     kickoff = m.get("date", "")
-                    indicator = f"⏳ {kickoff[11:16] if len(kickoff) > 11 else ''} UTC"
+                    indicator = f"⏳ {discord_ts(kickoff, 't')} ({discord_ts(kickoff, 'R')})" if kickoff else "⏳ TBD"
                 else:
                     indicator = description or "?"
                 embed.add_field(
@@ -631,7 +699,7 @@ async def on_message(message):
                     indicator = "🏁 FT"
                 elif phase == "scheduled":
                     kickoff = m.get("date", "")
-                    indicator = f"⏳ {kickoff[:10] if kickoff else 'TBD'}"
+                    indicator = f"⏳ {discord_ts(kickoff, 'd')} {discord_ts(kickoff, 't')}" if kickoff else "⏳ TBD"
                 else:
                     indicator = description or "?"
 
@@ -646,12 +714,101 @@ async def on_message(message):
         except Exception as e:
             await msg.edit(content=f"❌ Error: {e}")
 
+    # ── Next upcoming match ──
+    elif low.startswith("-next"):
+        if not HIGHLIGHTLY_API_KEY:
+            await message.channel.send("❌ `HIGHLIGHTLY_API_KEY` not set.")
+            return
+        team_filter = content[5:].strip().lower() if len(content) > 5 else ""
+        label = f"**{team_filter.title()}**'s" if team_filter else "the next"
+        msg = await message.channel.send(f"⏳ Looking up {label} match...")
+        try:
+            from datetime import date, timedelta
+            now_unix = time.time()
+            candidates = []
+            async with aiohttp.ClientSession() as session:
+                # Scan today through the next 14 days for the soonest not-started match.
+                for offset in range(0, 15):
+                    search_date = (date.today() + timedelta(days=offset)).isoformat()
+                    data = await hl_get(session, "/matches", {"date": search_date, "leagueId": WC_LEAGUE_ID})
+                    if not data:
+                        continue
+                    matches = data.get("data") if isinstance(data, dict) else data
+                    if not matches:
+                        continue
+                    for m in matches:
+                        if not isinstance(m, dict):
+                            continue
+                        state = m.get("state", {}) or {}
+                        if get_match_phase(state.get("description", "")) != "scheduled":
+                            continue
+                        ts = kickoff_unix(m.get("date", ""))
+                        if ts is None or ts < now_unix:
+                            continue
+                        if team_filter:
+                            home = safe_name(m.get("homeTeam", {})).lower()
+                            away = safe_name(m.get("awayTeam", {})).lower()
+                            if team_filter not in home and team_filter not in away:
+                                continue
+                        candidates.append((ts, m))
+                    # Once a day yields a candidate, that day's matches are fully scanned
+                    # above, so we can stop — no need to keep checking further-out days.
+                    if candidates:
+                        break
+            if not candidates:
+                if team_filter:
+                    await msg.edit(content=f"ℹ️ No upcoming match found for **{team_filter.title()}** in the next two weeks.")
+                else:
+                    await msg.edit(content="ℹ️ No upcoming World Cup matches found in the next two weeks.")
+                return
+            candidates.sort(key=lambda c: c[0])
+            ts, found = candidates[0]
+            # Fetch full detail for venue/forecast if available
+            match_id = found.get("id")
+            if match_id:
+                async with aiohttp.ClientSession() as session:
+                    detail = await hl_get(session, f"/matches/{match_id}", {})
+                if isinstance(detail, dict):
+                    detail_obj = detail.get("_raw") or detail.get("data")
+                    if isinstance(detail_obj, list) and detail_obj:
+                        found = detail_obj[0]
+                    elif isinstance(detail_obj, dict):
+                        found = detail_obj
+            home = safe_name(found.get("homeTeam", {}), "TBD")
+            away = safe_name(found.get("awayTeam", {}), "TBD")
+            home_disp = f"{team_flag(home)} {home}".strip()
+            away_disp = f"{team_flag(away)} {away}".strip()
+            kickoff = found.get("date", "")
+            embed = discord.Embed(
+                title=f"⏭️ Next match — {home} vs {away}",
+                description=f"## {home_disp}  vs  {away_disp}\n"
+                            f"🗓️ {discord_ts(kickoff, 'F')}\n"
+                            f"⏳ {discord_ts(kickoff, 'R')}",
+                color=0x1a3a2a
+            )
+            venue_line = format_venue(found.get("venue"))
+            if venue_line:
+                embed.add_field(name="🏟️ Venue", value=venue_line, inline=True)
+            forecast_line = format_forecast(found.get("forecast"))
+            if forecast_line:
+                embed.add_field(name="Weather", value=forecast_line, inline=True)
+            group = found.get("round", "")
+            if isinstance(group, dict):
+                group = safe_name(group)
+            if group:
+                embed.set_footer(text=str(group))
+            await msg.delete()
+            await message.channel.send(embed=embed)
+        except Exception as e:
+            await msg.edit(content=f"❌ Error: {e}")
+
     # ── Help ──
     elif content == "-help":
         embed = discord.Embed(title="⚽ WC2026 Bot Commands", color=0x1a3a2a)
         # Added "-m4" to the value description field below
         embed.add_field(name="Leaderboard", value="`-lead` `-m1` `-m2` `-m3` `-m4`", inline=False)
         embed.add_field(name="-tm [yday/tmrw]", value="World Cup matches — e.g. `-tm` or `-tm yday`", inline=False)
+        embed.add_field(name="-next [team]", value="Next upcoming match with live countdown timestamp — e.g. `-next` or `-next Brazil`", inline=False)
         embed.add_field(name="-live [team]", value="Live matches with goal scorers — e.g. `-live` or `-live France`", inline=False)
         embed.add_field(name="-match <team>", value="Match details & events — e.g. `-match France`", inline=False)
         embed.add_field(name="-lineup <team>", value="Starting lineup — e.g. `-lineup Brazil`", inline=False)
