@@ -39,6 +39,28 @@ const PLAYER_INFO = {
   'Pffq':    { avatar: 20, user: 'xenter0384' },
 };
 
+
+const TEAM_FLAGS = {
+  'Mexico': '🇲🇽', 'South Africa': '🇿🇦', 'South Korea': '🇰🇷', 'Czechia': '🇨🇿',
+  'Canada': '🇨🇦', 'Bosnia & Herz.': '🇧🇦', 'Bosnia': '🇧🇦', 'USA': '🇺🇸', 'Paraguay': '🇵🇾',
+  'Qatar': '🇶🇦', 'Switzerland': '🇨🇭', 'Brazil': '🇧🇷', 'Morocco': '🇲🇦',
+  'Haiti': '🇭🇹', 'Scotland': '🏴󠁧󠁢󠁳󠁣󠁴󠁿', 'Australia': '🇦🇺', 'Turkiye': '🇹🇷',
+  'Germany': '🇩🇪', 'Curacao': '🇨🇼', 'Netherlands': '🇳🇱', 'Japan': '🇯🇵',
+  'Ivory Coast': '🇨🇮', 'Ecuador': '🇪🇨', 'Sweden': '🇸🇪', 'Tunisia': '🇹🇳',
+  'Spain': '🇪🇸', 'Cape Verde': '🇨🇻', 'Belgium': '🇧🇪', 'Egypt': '🇪🇬',
+  'Saudi Arabia': '🇸🇦', 'Uruguay': '🇺🇾', 'Iran': '🇮🇷', 'New Zealand': '🇳🇿',
+  'France': '🇫🇷', 'Senegal': '🇸🇳', 'Iraq': '🇮🇶', 'Norway': '🇳🇴',
+  'Argentina': '🇦🇷', 'Algeria': '🇩🇿', 'Austria': '🇦🇹', 'Jordan': '🇯🇴',
+  'Portugal': '🇵🇹', 'Congo DR': '🇨🇩', 'England': '🏴󠁧󠁢󠁥󠁮󠁧󠁿', 'Croatia': '🇭🇷',
+  'Ghana': '🇬🇭', 'Panama': '🇵🇦', 'Uzbekistan': '🇺🇿', 'Colombia': '🇨🇴',
+  'Denmark': '🇩🇰', 'Serbia': '🇷🇸', 'Poland': '🇵🇱', 'Nigeria': '🇳🇬',
+  'Cameroon': '🇨🇲', 'Peru': '🇵🇪', 'Wales': '🏴󠁧󠁢󠁷󠁬󠁳󠁿',
+};
+
+function getFlag(team) {
+  return TEAM_FLAGS[team] || '🏳️';
+}
+
 let activeBoard = 'lead';
 let selectedPlayer = null;
 let cachedWinRates = {}; // Memory bank tracking accuracy: { 'Babu': '65.15%' }
@@ -442,29 +464,35 @@ async function loadPredictions() {
       if (matchNum && !isNaN(matchNum)) {
         const actualOutcome = outcomeMap[matchNum] || ''; // e.g. "1", "2", "X", or "" if not played
 
+        const flag1 = getFlag(team1);
+        const flag2 = getFlag(team2);
         html += `<div class="pred-row">
                    <div class="cell-match-info">
                      <span class="m-num">${matchNum}</span>
-                     <span class="m-teams">${escHtml(team1)} vs ${escHtml(team2)}</span>
+                     <div class="m-teams-block">
+                       <span class="m-team">${flag1} ${escHtml(team1)}</span>
+                       <span class="m-vs">vs</span>
+                       <span class="m-team">${flag2} ${escHtml(team2)}</span>
+                     </div>
                    </div>`;
 
         // Render cell prediction values (Cols E to R -> indices 4 to 17)
         for (let c = 4; c <= 17; c++) {
           const pred = row[c] ? row[c].trim().toUpperCase() : '';
 
-          // Base colour class (home/away/draw styling used when no result yet)
-          let predClass = '';
-          if (pred === '1') predClass = 'pred-home';
-          else if (pred === '2') predClass = 'pred-away';
-          else if (pred === 'X') predClass = 'pred-draw';
-
-          // Result colour-coding: green if correct, red if wrong (only when match is played)
-          let resultClass = '';
-          if (actualOutcome && pred) {
-            resultClass = pred === actualOutcome ? 'pred-correct' : 'pred-wrong';
+          let cellClass = '';
+          if (!pred) {
+            // Empty cell — no prediction made
+            cellClass = '';
+          } else if (actualOutcome) {
+            // Match has a result — show correct (green) or wrong (red)
+            cellClass = pred === actualOutcome ? 'pred-correct' : 'pred-wrong';
+          } else {
+            // Match not yet played — neutral muted tint, no right/wrong implied
+            cellClass = 'pred-neutral';
           }
 
-          html += `<div class="cell-player-pred ${predClass} ${resultClass}">${escHtml(pred)}</div>`;
+          html += `<div class="cell-player-pred ${cellClass}">${escHtml(pred)}</div>`;
         }
         html += `</div>`;
       }
