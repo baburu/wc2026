@@ -1,0 +1,260 @@
+from flask import Flask, request, send_file, abort
+from PIL import Image, ImageDraw, ImageFont, ImageFilter
+import requests
+import io
+import os
+import time
+
+app = Flask(__name__)
+
+GITHUB_BASE = "https://raw.githubusercontent.com/baburu/wc2026/refs/heads/main/cards/cropped"
+LEADERBOARD_URL = "https://baburu-wc2026-leaderboard.hf.space/preview"
+
+# Valid background keys → filenames in GitHub
+BG_NAMES = {
+    "default": "base.png",
+    "gc":      "gc.png",
+    "m":       "m.png",
+}
+
+# Score text color per background key, matching each card's border/theme color
+SCORE_COLORS = {
+    "default": (100, 20, 40, 255),
+    "gc":      (20, 70, 160, 255),   # blue, matches the gc.png border
+    "m":       (150, 20, 30, 255),   # red, matches the m.png border
+}
+
+# Discord username (lowercase) -> Sheet name
+NAME_MAP = {
+    "baburubaburu": "Babu",
+    "houtarou": "Hotarou",
+    "ziggssawpuzzle":"Ziggs",
+    "trel":         "Trel",
+    "scorpy":       "Scorpy",
+    "pyrospower":   "Pyro",
+    "edna_san":     "Edna",
+    "bimbastic":    "BimBim",
+    "squallyy":      "Squally",
+    "hypetrain":    "Hype",
+    "sunnyrainlight":"Sunny",
+    "akuma5336": "D4",
+    "nyte_zero":    "Nyte",
+    "xenter0384":   "Pffq",
+}
+
+_image_cache = {}
+_score_cache = {}
+
+# Auto-expire the image cache after this many seconds so badge/avatar/bg
+# updates pushed to GitHub show up automatically without a manual clear.
+CACHE_TTL_SECONDS = 300  # 5 minutes
+_cache_last_cleared = time.time()
+
+def fetch_image(url):
+    global _cache_last_cleared
+    if time.time() - _cache_last_cleared > CACHE_TTL_SECONDS:
+        _image_cache.clear()
+        _cache_last_cleared = time.time()
+
+    if url in _image_cache:
+        return _image_cache[url].copy()
+    resp = requests.get(url, timeout=15)
+    resp.raise_for_status()
+    img = Image.open(io.BytesIO(resp.content)).convert("RGBA")
+    _image_cache[url] = img
+    return img.copy()
+
+def fetch_score(discord_username):
+    sheet_name = NAME_MAP.get(discord_username.lower())
+    if not sheet_name:
+        return "0"
+    try:
+        resp = requests.get(LEADERBOARD_URL, timeout=10)
+        resp.raise_for_status()
+        data = resp.json()
+        for player in data.get("players", []):
+            if player["name"] == sheet_name:
+                return str(player["score"])
+    except Exception:
+        pass
+    return "0"
+
+def get_font(size):
+    font_paths = [
+        "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf",
+        "/usr/share/fonts/truetype/liberation/LiberationSans-Bold.ttf",
+        "/usr/share/fonts/truetype/freefont/FreeSansBold.ttf",
+        "/usr/share/fonts/truetype/ubuntu/Ubuntu-B.ttf",
+    ]
+    for path in font_paths:
+        if os.path.exists(path):
+            return ImageFont.truetype(path, size)
+    return ImageFont.load_default(size=size)
+
+VALID_BADGES = {"m1", "m2", "m3", "wc26"}
+
+# --- Badge layout config: edit these to resize/reposition the badge row ---
+BADGE_SIZE   = 80    # width (px) each badge is scaled into on the 400x600 card
+BADGE_HEIGHT = 100   # height (px) each badge is scaled into on the 400x600 card
+BADGE_GAP    = 5    # gap (px) between badges
+BADGE_LEFT_X = 30   # left margin (px) where the badge row starts
+BADGE_Y      = 415  # vertical center (px) of the badge row
+
+# Safety clamp
+BADGE_SIZE = max(16, min(BADGE_SIZE, 120))
+BADGE_HEIGHT = max(16, min(BADGE_HEIGHT, 140))
+
+# --- Badge shadow/glow config ---
+SHADOW_OFFSET_X = 0      # X offset (0 = uniform halo, no directional lean)
+SHADOW_OFFSET_Y = 0      # Y offset (0 = uniform halo, no directional lean)
+SHADOW_BLUR     = 4      # Gaussian blur radius (controls softness/feathering of the glow)
+SHADOW_OPACITY  = 220    # Opacity of the glow (0 to 255. Set to 255 for solid, 220 for bright but soft)
+SHADOW_SPREAD   = 3      # Thickness of the solid core of the glow in pixels (0 to disable spread)
+
+# The light shadow/halo color:
+SHADOW_COLOR    = (246, 240, 223)  # Cream (matches your site's --cream)
+# ---------------------------------------------------------------------
+
+
+@app.route("/card")
+def card():
+    try:
+        avatar_num = int(request.args.get("avatar", 2))
+    except ValueError:
+        abort(400, "Invalid avatar number")
+
+    if avatar_num < 2 or avatar_num > 31:
+        abort(400, "Avatar must be between 2 and 31")
+
+    username = request.args.get("user", "Player")[:20]
+    score    = fetch_score(username)
+    raw_badges = request.args.get("badge", "")
+    badges = [b.strip().lower() for b in raw_badges.split(",") if b.strip()]
+    badges = [b for b in badges if b in VALID_BADGES and b != "wc26"]
+    badges = ["wc26"] + badges  # wc26 always first, regardless of query param
+    username = username.upper()
+
+    # Background: pick from BG_NAMES, fall back to default
+    bg_key = request.args.get("bg", "default").strip().lower()
+    bg_filename = BG_NAMES.get(bg_key, "01.png")
+    bg_url = f"{GITHUB_BASE}/{bg_filename}"
+
+    try:
+        bg     = fetch_image(bg_url)
+        avatar = fetch_image(f"{GITHUB_BASE}/{avatar_num:02d}.png")
+    except Exception as e:
+        abort(502, f"Could not fetch images: {e}")
+
+    badge_imgs = []
+    for b in badges:
+        try:
+            badge_imgs.append(fetch_image(f"{GITHUB_BASE}/{b}.png"))
+        except Exception:
+            pass  # missing/broken badge file shouldn't break the whole card
+
+    card_img = Image.new("RGBA", (400, 600), (0, 0, 0, 0))
+    card_img.paste(bg, (0, 0))
+    card_img.paste(avatar, (0, 0), avatar)
+    bar_region = bg.crop((0, 500, 400, 600))
+    card_img.paste(bar_region, (0, 500))
+
+    draw = ImageDraw.Draw(card_img)
+
+    font_name  = get_font(32)
+    font_score = get_font(16)
+
+    cx = 200
+
+    if badge_imgs:
+        x = BADGE_LEFT_X
+        for img in badge_imgs:
+            resized = img.copy()
+            resized.thumbnail((BADGE_SIZE, BADGE_HEIGHT))
+            bw, bh = resized.size
+            paste_y = BADGE_Y - bh // 2
+
+            # 1. Extract the badge's actual alpha channel as a grayscale mask ("L" mode)
+            alpha = resized.split()[-1]
+            
+            # 2. Set up local padding so neither the spread nor the blur get clipped at the edges
+            pad = SHADOW_BLUR * 3 + SHADOW_SPREAD
+            padded_size = (bw + 2 * pad, bh + 2 * pad)
+            
+            # 3. Paste the mask into a padded grayscale canvas
+            mask_padded = Image.new("L", padded_size, 0)
+            mask_padded.paste(alpha, (pad, pad))
+            
+            # 4. Dilate the mask boundaries using MaxFilter to thicken the glow core
+            if SHADOW_SPREAD > 0:
+                # Kernel size must be an odd integer >= 3
+                kernel_size = 2 * SHADOW_SPREAD + 1
+                mask_padded = mask_padded.filter(ImageFilter.MaxFilter(kernel_size))
+            
+            # 5. Blur the mask (remains clean since it is a single-channel grayscale operation)
+            blurred_mask = mask_padded.filter(ImageFilter.GaussianBlur(SHADOW_BLUR))
+            
+            # 6. Scale the opacity values according to the SHADOW_OPACITY setting
+            if SHADOW_OPACITY < 255:
+                blurred_mask = blurred_mask.point(lambda p: int(p * SHADOW_OPACITY / 255.0))
+            
+            # 7. Apply the blurred mask to a solid color block matching SHADOW_COLOR
+            shadow_shape = Image.new("RGBA", padded_size, SHADOW_COLOR + (255,))
+            shadow_shape.putalpha(blurred_mask)
+            
+            # 8. Calculate position coordinates adjusted for the padding and shadow offsets
+            shadow_x = x - pad + SHADOW_OFFSET_X
+            shadow_y = paste_y - pad + SHADOW_OFFSET_Y
+            
+            # 9. Paste the completed shadow onto the card, then paste the original badge on top
+            card_img.paste(shadow_shape, (shadow_x, shadow_y), shadow_shape)
+            card_img.paste(resized, (x, paste_y), resized)
+            
+            x += bw + BADGE_GAP  # use actual rendered width
+
+    score_color = SCORE_COLORS.get(bg_key, SCORE_COLORS["default"])
+
+    draw.text((cx, 508), username,              font=font_name,  fill=(242, 235, 213, 255), anchor="mm")
+    draw.text((cx, 554), f"SCORE: {score} PTS", font=font_score, fill=score_color,          anchor="mm")
+
+    out = io.BytesIO()
+    card_img.convert("RGB").save(out, format="PNG", optimize=True)
+    out.seek(0)
+    return send_file(out, mimetype="image/png")
+
+@app.route("/clear-cache")
+def clear_cache():
+    global _cache_last_cleared
+    _image_cache.clear()
+    _score_cache.clear()
+    _cache_last_cleared = time.time()
+    return "✅ Image cache cleared!"
+
+@app.route("/warmup")
+def warmup():
+    errors = []
+    for bg_filename in BG_NAMES.values():
+        try:
+            fetch_image(f"{GITHUB_BASE}/{bg_filename}")
+        except Exception as e:
+            errors.append(f"bg {bg_filename}: {e}")
+    for i in range(2, 32):
+        try:
+            fetch_image(f"{GITHUB_BASE}/{i:02d}.png")
+        except Exception as e:
+            errors.append(f"avatar {i}: {e}")
+    for badge in VALID_BADGES:
+        try:
+            fetch_image(f"{GITHUB_BASE}/{badge}.png")
+        except Exception as e:
+            errors.append(f"badge {badge}: {e}")
+    if errors:
+        return f"Done with errors: {errors}"
+    return "✅ All images cached!"
+
+@app.route("/")
+def index():
+    return "WC2026 Card Service is running! Use /card?avatar=2&user=YourName&bg=gc"
+
+if __name__ == "__main__":
+    port = int(os.environ.get("PORT", 5000))
+    app.run(host="0.0.0.0", port=port)

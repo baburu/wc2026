@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>World Cup 2026 — Predictions League</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Anton&family=Oswald:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ccircle cx='16' cy='16' r='16' fill='%230f261d'/%3E%3Ccircle cx='16' cy='16' r='11' fill='%23f6f0df' stroke='%231a3a2a' stroke-width='0.5'/%3E%3Cpolygon points='16,7 18.9,11.1 23.5,9.6 22.5,14.5 26.5,17.5 22,18.5 21,23.5 16,21 11,23.5 10,18.5 5.5,17.5 9.5,14.5 8.5,9.6 13.1,11.1' fill='%231a3a2a' opacity='0.18'/%3E%3Ccircle cx='16' cy='16' r='3.2' fill='%231a3a2a'/%3E%3Cline x1='16' y1='12.8' x2='13.1' y2='11.1' stroke='%231a3a2a' stroke-width='1.1'/%3E%3Cline x1='16' y1='12.8' x2='18.9' y2='11.1' stroke='%231a3a2a' stroke-width='1.1'/%3E%3Cline x1='13.2' y1='17.6' x2='10' y2='18.5' stroke='%231a3a2a' stroke-width='1.1'/%3E%3Cline x1='13.2' y1='17.6' x2='11' y2='23.5' stroke='%231a3a2a' stroke-width='1.1'/%3E%3Cline x1='18.8' y1='17.6' x2='22' y2='18.5' stroke='%231a3a2a' stroke-width='1.1'/%3E%3Cline x1='18.8' y1='17.6' x2='21' y2='23.5' stroke='%231a3a2a' stroke-width='1.1'/%3E%3C/svg%3E" />
+  <link rel="stylesheet" href="/ui/style.css" />
+  <!-- Chart.js Engine for Live Interactive Charting -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+
+  <!-- ── Performance Ticker Bar ── -->
+  <div class="ticker-bar" id="ticker-bar" aria-label="Player performance ticker">
+    <div class="ticker-label">LIVE</div>
+    <div class="ticker-viewport">
+      <div class="ticker-track" id="ticker-track">
+        <span class="ticker-loading">⏳ Loading standings…</span>
+      </div>
+    </div>
+  </div>
+
+  <header>
+    <div class="header-eyebrow">Friends predictions league</div>
+    <div class="ball">⚽</div>
+    <div class="header-title">World Cup<br><span>2026</span></div>
+    <div class="header-sub">Who called it best?</div>
+  </header>
+
+  <div class="grass"></div>
+
+  <!-- Updated Navigation Menu -->
+  <nav>
+    <button class="pill active" id="btn-standings">Standings</button>
+    <button class="pill" id="btn-predictions">Predictions</button>
+    <button class="pill" id="btn-analysis">Analysis</button>
+  </nav>
+
+  <div class="content-wrap">
+    <main>
+      
+      <!-- View 1: Standings (Active by default) -->
+      <div id="view-standings">
+        <div class="section-label">
+          <h2>General Classification</h2>
+          <span class="badge">Live</span>
+        </div>
+
+        <div class="leaderboard-surface">
+          <div class="tabs-row">
+            <div class="tabs" role="tablist">
+              <button class="tab active" data-board="lead" role="tab">Overall</button>
+              <button class="tab" data-board="m1" role="tab">Matchday 1</button>
+              <button class="tab" data-board="m2" role="tab">Matchday 2</button>
+              <button class="tab" data-board="m3" role="tab">Matchday 3</button>
+              <button class="tab" data-board="m4" role="tab">Matchday 4</button>
+            </div>
+            <button class="refresh-btn" id="refresh-btn">
+              <span id="refresh-icon">↻</span> Refresh
+            </button>
+          </div>
+
+          <div id="board-container">
+            <div class="state-msg"><span class="icon">⏳</span>Loading scores…</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- View 2: Predictions (Hidden by default) -->
+      <div id="view-predictions" style="display: none;">
+        <div class="section-label">
+          <h2>All Predictions Matrix</h2>
+          <span class="badge">Matrix</span>
+        </div>
+        <div id="predictions-container">
+          <div class="state-msg"><span class="icon">⏳</span>Loading predictions...</div>
+        </div>
+      </div>
+
+      <!-- View 3: Analysis (Hidden by default) -->
+      <div id="view-analysis" style="display: none;">
+        <div class="section-label">
+          <h2>Market Analysis & Chart</h2>
+          <span class="badge">Analysis</span>
+        </div>
+        
+        <!-- Live Chart Card -->
+        <div class="analysis-chart-card">
+          <canvas id="analysisChart"></canvas>
+        </div>
+
+        <!-- Analysis Articles Layout -->
+        <div class="analysis-grid" id="analysis-grid">
+          <!-- Dynamic Market Shocks / Upsets (Fixed Card at Top) -->
+          <div class="analysis-card shock-card" id="market-shocks-container">
+            <div class="analysis-card-header">⚡ MARKET SHOCKS (UPSETS)</div>
+            <div class="shocks-body" id="shocks-list">
+              <span class="ticker-loading">Calculating market anomalies...</span>
+            </div>
+          </div>
+          
+          <!-- All other commentary blocks from analysis.json generate automatically here -->
+        </div>
+      </div>
+
+    </main>
+
+    <aside id="card-panel">
+      <div id="preload-progress-container" class="preload-progress-wrap hidden">
+        <div class="progress-header">
+          <span class="progress-title">⚽ Syncing Cards...</span>
+          <span id="progress-percent" class="progress-num">0%</span>
+        </div>
+        <div class="progress-bar-bg">
+          <div id="progress-bar-fill" class="progress-bar-fill"></div>
+        </div>
+      </div>
+
+      <div id="hidden-card-vault" style="display: none !important;"></div>
+
+      <div class="card-placeholder">
+        <span class="card-placeholder-icon">👆</span>
+        <p>Click a player<br>to see their card</p>
+      </div>
+    </aside>
+  </div>
+
+  <footer>
+    World Cup 2026 Predictions League &mdash; good luck everyone ⚽
+  </footer>
+
+  <script src="/ui/script.js"></script>
+
+  <!-- Hash routing: open Analysis tab when URL ends with #analysis -->
+  <script>
+    if (window.location.hash === '#analysis') {
+      window.addEventListener('DOMContentLoaded', () => {
+        const btn = document.getElementById('btn-analysis');
+        if (btn) btn.click();
+        history.replaceState(null, '', window.location.pathname);
+      });
+    }
+  </script>
+
+</body>
+</html>

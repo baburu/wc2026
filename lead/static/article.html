@@ -1,0 +1,336 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Analysis — World Cup 2026 Predictions League</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Anton&family=Oswald:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ccircle cx='16' cy='16' r='16' fill='%230f261d'/%3E%3Ccircle cx='16' cy='16' r='11' fill='%23f6f0df' stroke='%231a3a2a' stroke-width='0.5'/%3E%3Cpolygon points='16,7 18.9,11.1 23.5,9.6 22.5,14.5 26.5,17.5 22,18.5 21,23.5 16,21 11,23.5 10,18.5 5.5,17.5 9.5,14.5 8.5,9.6 13.1,11.1' fill='%231a3a2a' opacity='0.18'/%3E%3Ccircle cx='16' cy='16' r='3.2' fill='%231a3a2a'/%3E%3C/svg%3E" />
+  <link rel="stylesheet" href="/ui/style.css" />
+
+  <!-- Open Graph meta tags — dynamically set by JS below -->
+  <meta property="og:type" content="article" />
+  <meta property="og:site_name" content="WC2026 Predictions League" />
+  <meta id="og-title" property="og:title" content="Analysis — WC2026 Predictions League" />
+  <meta id="og-description" property="og:description" content="Analysis and commentary from the World Cup 2026 Predictions League." />
+  <meta id="og-url" property="og:url" content="" />
+</head>
+<body>
+
+  <!-- ── Ticker bar (static placeholder on article pages) ── -->
+  <div class="ticker-bar" aria-label="Back to main site">
+    <div class="ticker-label">WC26</div>
+    <div class="ticker-viewport">
+      <div class="ticker-track" style="padding-left:16px;">
+        <span class="ticker-loading">World Cup 2026 — Predictions League</span>
+      </div>
+    </div>
+  </div>
+
+  <header>
+    <div class="header-eyebrow">Friends predictions league</div>
+    <div class="ball">⚽</div>
+    <div class="header-title">World Cup<br><span>2026</span></div>
+    <div class="header-sub">Analysis &amp; Commentary</div>
+  </header>
+
+  <div class="grass"></div>
+
+  <div id="article-root">
+    <!-- Filled dynamically by JS -->
+    <div class="article-reader-wrap">
+      <div class="state-msg" style="margin-top:3rem;">
+        <span class="icon">⏳</span>Loading article…
+      </div>
+    </div>
+  </div>
+
+  <footer>
+    World Cup 2026 Predictions League &mdash; good luck everyone ⚽
+  </footer>
+
+<script>
+  const SCORING_SHEET_CSV_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vT8fEdr0djoTa4bc8diSdwH2xSDJ4JTlNgHUWho8lQ5btMR9Joe3sXhZPP72oTSE9MBdoYKrY4DlFl9/pub?gid=865998988&single=true&output=csv';
+  const PREDICTIONS_SHEET_CSV_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vT8fEdr0djoTa4bc8diSdwH2xSDJ4JTlNgHUWho8lQ5btMR9Joe3sXhZPP72oTSE9MBdoYKrY4DlFl9/pub?gid=793952308&single=true&output=csv';
+  const MATCHES_SHEET_CSV_URL  = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vT8fEdr0djoTa4bc8diSdwH2xSDJ4JTlNgHUWho8lQ5btMR9Joe3sXhZPP72oTSE9MBdoYKrY4DlFl9/pub?gid=0&single=true&output=csv';
+
+  const ARTICLE_COLOR_PALETTE = [
+    { color: '#f4c542' }, // gold
+    { color: '#8acdff' }, // blue
+    { color: '#1fc269' }, // green
+    { color: '#ef3b46' }, // red
+    { color: '#c8dcc0' }, // sage
+    { color: '#b896ff' }, // purple
+  ];
+
+  function hashKeyToIndex(key, mod) {
+    let hash = 0;
+    for (let i = 0; i < key.length; i++) hash = (hash * 31 + key.charCodeAt(i)) >>> 0;
+    return hash % mod;
+  }
+
+  function getArticleMeta(key, article) {
+    const emojiMatch = article.title.match(/^[\p{Emoji}\u200d\ufe0f]+/u);
+    const icon = emojiMatch ? emojiMatch[0].trim() : '📋';
+    const category = article.category
+      ? article.category.toLowerCase().replace(/\b\w/g, c => c.toUpperCase())
+      : 'Analysis';
+    const color = ARTICLE_COLOR_PALETTE[hashKeyToIndex(key, ARTICLE_COLOR_PALETTE.length)].color;
+    return { category, icon, color };
+  }
+
+  function escHtml(s) {
+    return String(s)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;');
+  }
+
+  // Turn the raw analysis.json text into readable HTML: real paragraphs,
+  // bullet lists for "• " lines, and a highlighted callout box for any
+  // sentence that announces a winner/result (emoji + ALL-CAPS label + colon).
+  function renderArticleBody(text) {
+    const rawBlocks = String(text).split(/\n\s*\n/).map(b => b.trim()).filter(Boolean);
+
+    // Merge adjacent blocks that are both pure bullet lists (some articles
+    // separate every bullet with a blank line, others don't — normalize both).
+    const blocks = [];
+    rawBlocks.forEach(b => {
+      const isBulletBlock = b.split('\n').every(l => l.trim().startsWith('•'));
+      const prev = blocks[blocks.length - 1];
+      if (isBulletBlock && prev && prev.isBullet) {
+        prev.text += '\n' + b;
+      } else {
+        blocks.push({ text: b, isBullet: isBulletBlock });
+      }
+    });
+
+    let firstParagraphDone = false;
+    return blocks.map(({ text: block, isBullet }) => {
+      if (isBullet) {
+        const items = block.split('\n').map(l => l.trim()).filter(Boolean)
+          .map(l => `<li>${escHtml(l.replace(/^•\s*/, ''))}</li>`).join('');
+        return `<ul class="article-reader-list">${items}</ul>`;
+      }
+
+      // Split out a trailing callout sentence like "🏆 QUARTERLY WINNER: ..."
+      const calloutMatch = block.match(/([\p{Emoji}\u200d\ufe0f]+\s*[A-Z][A-Z0-9 ]{3,}:\s*.+)$/su);
+      if (calloutMatch) {
+        const before = block.slice(0, calloutMatch.index).trim();
+        const callout = calloutMatch[1].trim();
+        const pClass = (!firstParagraphDone && before) ? ' class="article-reader-lead"' : '';
+        if (before) firstParagraphDone = true;
+        const beforeHtml = before ? `<p${pClass}>${escHtml(before)}</p>` : '';
+        return `${beforeHtml}<div class="article-reader-callout">${escHtml(callout)}</div>`;
+      }
+
+      const pClass = !firstParagraphDone ? ' class="article-reader-lead"' : '';
+      firstParagraphDone = true;
+      return `<p${pClass}>${escHtml(block)}</p>`;
+    }).join('');
+  }
+
+  async function fetchFresh(url) {
+    const sep = url.includes('?') ? '&' : '?';
+    return fetch(`${url}${sep}_cb=${Date.now()}`, { cache: 'no-store' });
+  }
+
+  async function fetchMatchOutcomes() {
+    const outcomeMap = {};
+    try {
+      const res = await fetchFresh(MATCHES_SHEET_CSV_URL);
+      if (!res.ok) return outcomeMap;
+      const rows = (await res.text()).split(/\r?\n/).map(r => r.split(','));
+      let outcomeColIndex = 6, matchColIndex = 1;
+      for (let i = 0; i < Math.min(rows.length, 10); i++) {
+        const row = rows[i];
+        const oIdx = row.findIndex(c => c.trim().toLowerCase() === 'outcome');
+        const mIdx = row.findIndex(c => c.trim().toLowerCase() === 'match');
+        if (oIdx !== -1) outcomeColIndex = oIdx;
+        if (mIdx !== -1) matchColIndex   = mIdx;
+        if (oIdx !== -1 && mIdx !== -1) break;
+      }
+      for (const row of rows) {
+        if (!row || row.length < 3) continue;
+        const matchNum = (row[matchColIndex] || '').trim();
+        const outcome  = (row[outcomeColIndex] || '').trim().toUpperCase();
+        if (matchNum && !isNaN(matchNum) && ['1','2','X'].includes(outcome)) {
+          outcomeMap[matchNum] = outcome;
+        }
+      }
+    } catch (e) { /* silent */ }
+    return outcomeMap;
+  }
+
+  async function getSettlement(matchNum) {
+    try {
+      const [predRes, outcomeMap] = await Promise.all([
+        fetchFresh(PREDICTIONS_SHEET_CSV_URL),
+        fetchMatchOutcomes(),
+      ]);
+      if (!predRes.ok) return null;
+      const predRows  = (await predRes.text()).split(/\r?\n/).map(r => r.split(','));
+      const headerRow = predRows[1] || [];
+      const actualOutcome = outcomeMap[String(matchNum)];
+      const matchRow = predRows.find(r => r && r[1] && parseInt(r[1].trim(), 10) === parseInt(matchNum, 10));
+      if (!matchRow || !actualOutcome) return null;
+
+      const profited = [], liquidated = [];
+      for (let c = 4; c <= 17; c++) {
+        const pred   = (matchRow[c] || '').trim().toUpperCase();
+        const player = (headerRow[c] || '').trim();
+        if (player && pred) {
+          (pred === actualOutcome ? profited : liquidated).push(player);
+        }
+      }
+      return { profited, liquidated };
+    } catch (e) { return null; }
+  }
+
+  function copyPermalink(url) {
+    navigator.clipboard.writeText(url).then(() => {
+      const btn = document.getElementById('copy-btn');
+      if (btn) {
+        btn.textContent = 'Copied!';
+        setTimeout(() => { btn.textContent = 'Copy Link'; }, 2000);
+      }
+    }).catch(() => {
+      // Fallback for older browsers
+      const ta = document.createElement('textarea');
+      ta.value = url;
+      document.body.appendChild(ta);
+      ta.select();
+      document.execCommand('copy');
+      document.body.removeChild(ta);
+      const btn = document.getElementById('copy-btn');
+      if (btn) {
+        btn.textContent = 'Copied!';
+        setTimeout(() => { btn.textContent = 'Copy Link'; }, 2000);
+      }
+    });
+  }
+
+  async function renderArticle() {
+    const root = document.getElementById('article-root');
+    const params = new URLSearchParams(window.location.search);
+    const key = params.get('id');
+
+    const backUrl = '/ui/index.html#analysis';
+
+    if (!key) {
+      root.innerHTML = `
+        <div class="article-reader-wrap">
+          <a class="article-back-btn" href="${backUrl}">← Back to Analysis</a>
+          <div class="state-msg"><span class="icon">❌</span>No article ID specified.</div>
+        </div>`;
+      return;
+    }
+
+    try {
+      const res = await fetch(`/ui/analysis.json?_cb=${Date.now()}`);
+      if (!res.ok) throw new Error('Could not load analysis.json');
+      const data = await res.json();
+
+      const article = data[key];
+      if (!article) {
+        root.innerHTML = `
+          <div class="article-reader-wrap">
+            <a class="article-back-btn" href="${backUrl}">← Back to Analysis</a>
+            <div class="state-msg"><span class="icon">❌</span>Article not found: <code>${escHtml(key)}</code></div>
+          </div>`;
+        return;
+      }
+
+      const meta  = getArticleMeta(key, article);
+      const color = meta.color;
+      // Clean title (strip leading emoji)
+      const cleanTitle = article.title.replace(/^[\p{Emoji}\s]+/u, '').trim();
+
+      // Update page title & OG tags
+      document.title = `${cleanTitle} — WC2026 Predictions`;
+      const ogTitle = document.getElementById('og-title');
+      const ogDesc  = document.getElementById('og-description');
+      const ogUrl   = document.getElementById('og-url');
+      if (ogTitle) ogTitle.content = cleanTitle;
+      if (ogDesc)  ogDesc.content  = article.text.replace(/\n/g, ' ').slice(0, 160);
+      if (ogUrl)   ogUrl.content   = window.location.href;
+
+      const permalink = window.location.origin + window.location.pathname + '?id=' + encodeURIComponent(key);
+
+      // Settlement block if article has matchNum
+      let settlementHtml = '';
+      if (article.matchNum) {
+        settlementHtml = `<div class="article-reader-settlement" id="settlement-block">
+          <span style="color:var(--gold);font-family:'Oswald',sans-serif;font-size:12px;letter-spacing:0.1em;text-transform:uppercase;">
+            📊 Loading group portfolio settlement…
+          </span>
+        </div>`;
+      }
+
+      root.innerHTML = `
+        <div class="article-reader-wrap">
+          <a class="article-back-btn" href="${backUrl}">← Back to Analysis</a>
+
+          <div class="article-reader-category" style="color:${color}">${escHtml(meta.category)}</div>
+          <h1 class="article-reader-title">${escHtml(cleanTitle)}</h1>
+
+          <div class="article-reader-meta">
+            <span>WC2026 Analysis Desk</span>
+            <div class="reader-dot"></div>
+            <span>${new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}</span>
+          </div>
+
+          <!-- Hero banner -->
+          <div class="article-reader-hero"${article.image ? ' style="background-image:url(\'' + escHtml(article.image) + '\');background-size:cover;background-position:center;"' : ''}>
+            ${article.image ? '' : `<div class="article-reader-hero-icon">${meta.icon}</div>`}
+            <div class="article-reader-hero-bar" style="background:linear-gradient(90deg,${color},transparent 70%)"></div>
+          </div>
+
+          <!-- Body -->
+          <div class="article-reader-body">${renderArticleBody(article.text)}</div>
+
+          ${settlementHtml}
+
+          <!-- Permalink bar -->
+          <div class="article-permalink-bar">
+            <span class="article-permalink-label">🔗 Permalink</span>
+            <span class="article-permalink-url">${escHtml(permalink)}</span>
+            <button class="article-permalink-copy" id="copy-btn" onclick="copyPermalink('${escHtml(permalink)}')">Copy Link</button>
+          </div>
+        </div>`;
+
+      // Async: fill settlement block
+      if (article.matchNum) {
+        getSettlement(article.matchNum).then(result => {
+          const block = document.getElementById('settlement-block');
+          if (!block) return;
+          if (!result) {
+            block.innerHTML = `<span style="opacity:0.55;font-size:12px;">📊 Settlement data not available yet — match may not have been played.</span>`;
+            return;
+          }
+          block.innerHTML = `
+            <strong style="color:var(--gold);font-family:'Oswald',sans-serif;font-size:11px;letter-spacing:0.1em;text-transform:uppercase;display:block;margin-bottom:8px;">
+              📊 Group Portfolio Settlement
+            </strong>
+            <span style="color:#1fc269;font-weight:600;">🟢 Correct (Profited):</span> ${escHtml(result.profited.join(', ') || 'None')}<br>
+            <span style="color:#ef3b46;font-weight:600;">🔴 Incorrect (Liquidated):</span> ${escHtml(result.liquidated.join(', ') || 'None')}
+          `;
+        });
+      }
+
+    } catch (err) {
+      root.innerHTML = `
+        <div class="article-reader-wrap">
+          <a class="article-back-btn" href="${backUrl}">← Back to Analysis</a>
+          <div class="state-msg"><span class="icon">⚠️</span>Failed to load article.<br><small>${escHtml(err.message)}</small></div>
+        </div>`;
+    }
+  }
+
+  renderArticle();
+</script>
+</body>
+</html>
