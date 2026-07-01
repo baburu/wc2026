@@ -19,12 +19,12 @@
 </head>
 <body>
 
-  <!-- ── Ticker bar (static placeholder on article pages) ── -->
-  <div class="ticker-bar" aria-label="Back to main site">
-    <div class="ticker-label">WC26</div>
+  <!-- ── Performance Ticker Bar (now live on every page, via ticker.js) ── -->
+  <div class="ticker-bar" id="ticker-bar" aria-label="Player performance ticker">
+    <div class="ticker-label">LIVE</div>
     <div class="ticker-viewport">
-      <div class="ticker-track" style="padding-left:16px;">
-        <span class="ticker-loading">World Cup 2026 — Predictions League</span>
+      <div class="ticker-track" id="ticker-track">
+        <span class="ticker-loading">⏳ Loading standings…</span>
       </div>
     </div>
   </div>
@@ -51,6 +51,7 @@
     World Cup 2026 Predictions League &mdash; good luck everyone ⚽
   </footer>
 
+<script src="/ui/ticker.js"></script>
 <script>
   const SCORING_SHEET_CSV_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vT8fEdr0djoTa4bc8diSdwH2xSDJ4JTlNgHUWho8lQ5btMR9Joe3sXhZPP72oTSE9MBdoYKrY4DlFl9/pub?gid=865998988&single=true&output=csv';
   const PREDICTIONS_SHEET_CSV_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vT8fEdr0djoTa4bc8diSdwH2xSDJ4JTlNgHUWho8lQ5btMR9Joe3sXhZPP72oTSE9MBdoYKrY4DlFl9/pub?gid=793952308&single=true&output=csv';
