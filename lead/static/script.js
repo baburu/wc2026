@@ -206,8 +206,21 @@ function attachRowClicks() {
   });
 }
 
-async function loadBoard(boardKey) {
+// In-memory cache of already-fetched leaderboards, keyed by board id.
+// Switching boards (arrows/dots) reuses this instead of re-fetching;
+// only a full page reload or the Refresh button busts it.
+let boardCache = {};
+
+async function loadBoard(boardKey, force = false) {
   const container = document.getElementById('board-container');
+
+  if (!force && boardCache[boardKey]) {
+    container.innerHTML = renderTable(boardCache[boardKey]);
+    attachRowClicks();
+    if (selectedPlayer) showCard(selectedPlayer);
+    return;
+  }
+
   container.innerHTML = `<div class="state-msg"><span class="icon">⏳</span>Loading…</div>`;
 
   try {
@@ -216,7 +229,8 @@ async function loadBoard(boardKey) {
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     const data = await res.json();
     if (!data.ok) throw new Error(data.error || 'Unknown error');
-    
+
+    boardCache[boardKey] = data.players;
     container.innerHTML = renderTable(data.players);
     attachRowClicks();
     if (selectedPlayer) showCard(selectedPlayer);
@@ -859,7 +873,8 @@ async function refreshActiveView() {
   await initTicker();
 
   if (btnStandings.classList.contains('active')) {
-    await loadBoard(activeBoard);
+    boardCache = {};
+    await loadBoard(activeBoard, true);
   } else if (btnPredictions.classList.contains('active')) {
     await loadPredictions();
   } else if (btnAnalysis.classList.contains('active')) {

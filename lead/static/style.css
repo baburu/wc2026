@@ -411,7 +411,7 @@ aside#card-panel {
 .board-nav {
   display: flex;
   align-items: center;
-  justify-content: center;
+  justify-content: flex-start;
   gap: 14px;
   flex: 1;
   align-self: stretch;
