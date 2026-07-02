@@ -52,13 +52,29 @@
 
         <div class="leaderboard-surface">
           <div class="tabs-row">
-            <div class="tabs" role="tablist">
-              <button class="tab active" data-board="lead" role="tab">Overall</button>
-              <button class="tab" data-board="m1" role="tab">Matchday 1</button>
-              <button class="tab" data-board="m2" role="tab">Matchday 2</button>
-              <button class="tab" data-board="m3" role="tab">Matchday 3</button>
-              <button class="tab" data-board="m4" role="tab">Matchday 4</button>
+            <!-- Dynamic Carousel Selector -->
+            <div class="board-selector-wrap">
+              <div class="board-selector">
+                <button class="selector-arrow" id="prev-board-btn" aria-label="Previous Matchday">
+                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="arrow-icon"><polyline points="15 18 9 12 15 6"></polyline></svg>
+                </button>
+                <div class="board-selector-info">
+                  <span class="board-subtitle" id="board-subtitle">OVERALL</span>
+                  <h3 class="board-title" id="board-title">General classification</h3>
+                </div>
+                <button class="selector-arrow" id="next-board-btn" aria-label="Next Matchday">
+                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="arrow-icon"><polyline points="9 18 15 12 9 6"></polyline></svg>
+                </button>
+              </div>
+              <div class="board-selector-dots" id="board-selector-dots">
+                <span class="dot active" data-index="0"></span>
+                <span class="dot" data-index="1"></span>
+                <span class="dot" data-index="2"></span>
+                <span class="dot" data-index="3"></span>
+                <span class="dot" data-index="4"></span>
+              </div>
             </div>
+
             <button class="refresh-btn" id="refresh-btn">
               <span id="refresh-icon">↻</span> Refresh
             </button>
