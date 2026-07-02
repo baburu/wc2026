@@ -43,14 +43,14 @@ const TEAM_FLAGS = {
   'Mexico': '🇲🇽', 'South Africa': '🇿🇦', 'South Korea': '🇰🇷', 'Czechia': '🇨🇿',
   'Canada': '🇨🇦', 'Bosnia & Herz.': '🇧🇦', 'Bosnia': '🇧🇦', 'USA': '🇺🇸', 'Paraguay': '🇵🇾',
   'Qatar': '🇶🇦', 'Switzerland': '🇨🇭', 'Brazil': '🇧🇷', 'Morocco': '🇲🇦',
-  'Haiti': '🇭🇹', 'Scotland': '🏴\u00db\u00ad\u00db\u00ad\u00db\u0097', 'Australia': '🇦🇺', 'Turkiye': '🇹🇷',
+  'Haiti': '🇭🇹', 'Scotland': '🏴󠁧󠁢󠁳󠁣󠁴󠁿', 'Australia': '🇦🇺', 'Turkiye': '🇹🇷',
   'Germany': '🇩🇪', 'Curacao': '🇨🇼', 'Netherlands': '🇳🇱', 'Japan': '🇯🇵',
   'Ivory Coast': '🇨🇮', 'Ecuador': '🇪🇨', 'Sweden': '🇸🇪', 'Tunisia': '🇹🇳',
   'Spain': '🇪🇸', 'Cape Verde': '🇨🇻', 'Belgium': '🇧🇪', 'Egypt': '🇪🇬',
   'Saudi Arabia': '🇸🇦', 'Uruguay': '🇺🇾', 'Iran': '🇮🇷', 'New Zealand': '🇳🇿',
   'France': '🇫🇷', 'Senegal': '🇸🇳', 'Iraq': '🇮🇶', 'Norway': '🇳🇴',
   'Argentina': '🇦🇷', 'Algeria': '🇩🇿', 'Austria': '🇦🇹', 'Jordan': '🇯🇴',
-  'Portugal': '🇵🇹', 'Congo DR': '🇨🇩', 'England': '🏴\u00db\u00ad\u00db\u00ad\u00db\u0097', 'Croatia': '🇭🇷',
+  'Portugal': '🇵🇹', 'Congo DR': '🇨🇩', 'England': '🏴󠁧󠁢󠁥󠁮󠁧󠁿', 'Croatia': '🇭🇷',
   'Ghana': '🇬🇭', 'Panama': '🇵🇦', 'Uzbekistan': '🇺🇿', 'Colombia': '🇨🇴',
   'Denmark': '🇩🇰', 'Serbia': '🇷🇸', 'Poland': '🇵🇱', 'Nigeria': '🇳🇬',
   'Cameroon': '🇨🇲', 'Peru': '🇵🇪', 'Wales': '🏴\u00db\u00ad\u00db\u00ad\u00db\u0097',
@@ -307,11 +307,11 @@ async function triggerBackgroundPreload() {
 
 // ── Board Carousel Selector Logic ──
 const BOARDS = [
-  { key: 'lead', subtitle: 'OVERALL', title: 'General classification' },
-  { key: 'm1', subtitle: 'MATCHDAY 1', title: 'Matchday 1 Standings' },
-  { key: 'm2', subtitle: 'MATCHDAY 2', title: 'Matchday 2 Standings' },
-  { key: 'm3', subtitle: 'MATCHDAY 3', title: 'Matchday 3 Standings' },
-  { key: 'm4', subtitle: 'MATCHDAY 4', title: 'Matchday 4 Standings' }
+  { key: 'lead', subtitle: 'GENERAL CLASSIFICATION' },
+  { key: 'm1', subtitle: 'MATCHDAY 1' },
+  { key: 'm2', subtitle: 'MATCHDAY 2' },
+  { key: 'm3', subtitle: 'MATCHDAY 3' },
+  { key: 'm4', subtitle: 'MATCHDAY 4' }
 ];
 let currentBoardIndex = 0;
 
@@ -319,9 +319,8 @@ function updateBoardSelector() {
   const board = BOARDS[currentBoardIndex];
   activeBoard = board.key;
   
-  // Update text values
+  // Update subtitle text only
   document.getElementById('board-subtitle').innerText = board.subtitle;
-  document.getElementById('board-title').innerText = board.title;
   
   // Update active dot visual class
   document.querySelectorAll('#board-selector-dots .dot').forEach((dot, idx) => {
@@ -537,15 +536,14 @@ async function loadPredictions() {
   }
 }
 
-// 🎬 Initialization Pipeline
-const leadBoardPromise = loadBoard('lead');
-fetchLiveWinRates();
-
-const wakePingPromise = fetch('https://wc2026-i9es.onrender.com/', { mode: 'no-cors' }).catch(() => {});
-
-Promise.all([leadBoardPromise, wakePingPromise]).then(() => {
-  triggerBackgroundPreload();
-});
+// ── Service Worker Registration ──
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('/sw.js')
+      .then(reg => console.log('Service Worker registered successfully:', reg.scope))
+      .catch(err => console.warn('Service Worker registration failed:', err));
+  });
+}
 
 async function fetchChartSeries() {
   const res = await fetchFresh(SCORING_SHEET_CSV_URL);
