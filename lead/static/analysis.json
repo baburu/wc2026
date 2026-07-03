@@ -124,13 +124,54 @@
     "thumbnail": "/ui/img/g8.png",
     "image": "/ui/img/g8.png"
   },
-  "market_rundown": {
-    "title": "📊 Market Rundown: Round of 16 Transition & Volatility Report",
-    "excerpt": "As the Round of 32 concludes, we map out the final bracket paths and the explosive, high-stakes outlook for your portfolios.",
-    "text": "The prediction market has officially completed its first major liquidation phase! With the Round of 32 drawing to a close, the field has been halved and the remaining portfolios are preparing for extreme, high-frequency volatility in the Round of 16.\n\n• The Macro Outlook: Hype continues to trade at premium multiples as our absolute market cap leader, but Babu is keeping the pressure high right behind. Scorpy, Edna, and D4 represent our highly profitable mid-caps, while Hotarou and Sunny continue to climb with incredibly reliable green-energy metrics. \n\n• Upcoming High-Volatility Assets: The bracket paths have set up some absolute blockbuster mergers. We have Brazil vs. Norway, France vs. Paraguay, and the ultimate co-host clash of Mexico vs. England at Estadio Azteca! Traders should prepare for extreme downside risks, complex hedging opportunities, and massive portfolio swings as the road to 2026 gets even narrower!",
-    "category": "MARKET REPORT",
+  "g9": {
+    "matchNum": 81,
+    "title": "🏆 Knockout Bracket G9: Belgium vs. Senegal (3-2)",
+    "excerpt": "A high-frequency turnaround! Senegal Lions led 2-0, but a late Belgian blue-chip recovery and a dramatic 120th-minute penalty margin call sealed the deal.",
+    "text": "An absolute, high-volatility thriller in Seattle! Senegal looked like the ultimate high-yield growth play, stunning the market with a rapid 2-0 lead via Habib Diarra and Ismaila Sarr. But the Belgian blue-chips refused to default. Romelu Lukaku and Youri Tielemans spearheaded a relentless, late-session offensive to draw level, before a highly controversial 125th-minute penalty in extra-time executed the ultimate, brutal margin call on Senegal bulls.\n\nThis dramatic finish divided the trading floor. Babu, Edna, and Hype successfully held their positions on the Red Devils, while BimBim and Trel pocketed massive gains after holding out for the extra-time turnaround. On the other side, speculative traders Pyro and Squally—who went heavily leveraged on a historic Senegalese upset—faced a catastrophic, last-second liquidation as the penalty referee closed the books.",
+    "category": "KNOCKOUT BRACKET",
     "date": "JULY 1, 2026",
-    "thumbnail": "/ui/img/market_rundown.png",
-    "image": "/ui/img/market_rundown.png"
+    "thumbnail": "/ui/img/g9.png",
+    "image": "/ui/img/g9.png"
+  },
+  "g10": {
+    "matchNum": 82,
+    "title": "🏆 Knockout Bracket G10: USA vs. Bosnia and Herzegovina (2-0)",
+    "excerpt": "A highly predictable home-market rally! Folarin Balogun and Malik Tillman secure comfortable dividends for USMNT bulls.",
+    "text": "A highly predictable, stable session at the San Francisco Bay Area Stadium! The USA co-hosts leveraged their home-market advantage perfectly, controlling the trading volume from kickoff. Folarin Balogun opened the scorebooks in the 64th minute, and Malik Tillman secured the dividend payouts with a clinical 82nd-minute strike, preventing any Bosnian value rebound.\n\nThis was a very safe, low-volatility session for the majority of our asset managers. Babu, Hype, Scorpy, Edna, Hotarou, Sunny, Trel, and BimBim all backed the USMNT blue-chips to secure steady, reliable capital gains. However, speculative contrarians Pffq and Nyte—who attempted to short-sell the hosts in favor of a Bosnian breakout—suffered a swift, complete margin call as the American defensive line held firm.",
+    "category": "KNOCKOUT BRACKET",
+    "date": "JULY 2, 2026",
+    "thumbnail": "/ui/img/g10.png",
+    "image": "/ui/img/g10.png"
+  },
+  "g11": {
+    "matchNum": 83,
+    "title": "🏆 Knockout Bracket G11: Portugal vs. Croatia (2-1)",
+    "excerpt": "Ronaldo's premium brand value surges! A high-stakes Toronto slugfest ends with a dramatic Portuguese breakout.",
+    "text": "The Toronto market experienced absolute, peak trading volume today! This highly anticipated corporate merger between two veteran giants did not disappoint. While Croatia's defensive bonds threatened to freeze the market, Portugal's marquee assets broke the ceiling. Gonçalo Ramos and Cristiano Ronaldo executed a clinical, late-session breakout to secure the 2-1 win, proving that premium brand equity holds its value in high-pressure environments.\n\nThis high-stakes outcome reshuffled the leaderboard. Bullish Portugal holders Babu, Hype, Scorpy, D4, and Pyro took home massive, high-yield dividends at the buzzer. In contrast, conservative traders Edna, Hotarou, and Sunny—who heavily hedged their portfolios on a Draw (X) expecting extra time—suffered a painful, late-market correction as Croatia's defensive line collapsed in the final minutes.",
+    "category": "KNOCKOUT BRACKET",
+    "date": "JULY 2, 2026",
+    "thumbnail": "/ui/img/g11.png",
+    "image": "/ui/img/g11.png"
+  },
+  "g12": {
+    "matchNum": 84,
+    "title": "🏆 Knockout Bracket G12: Spain vs. Austria (3-0)",
+    "excerpt": "La Roja delivers a ruthless, dominant blue-chip demonstration in LA, executing a massive capital blowout.",
+    "text": "A flawless, high-volume market execution by the European champions in Los Angeles! Spain completely outclassed the Austrian defensive lines from the opening bell. Mikel Oyarzabal delivered a spectacular, high-yield performance with a brilliant brace, and Pedro Porro capped off the 3-0 rout to officially put the rest of the prediction market on notice.\n\nThis was another beautiful, system-wide 100% correct portfolio sweep for our trading floor! Every single one of our 14 traders—Babu, Hype, Scorpy, Edna, Hotarou, Sunny, D4, Pyro, Nyte, Trel, Ziggs, BimBim, Squally, and Pffq—went heavily long on Spain, collecting safe, lucrative, and highly deserved capital dividends.",
+    "category": "KNOCKOUT BRACKET",
+    "date": "JULY 2, 2026",
+    "thumbnail": "/ui/img/g12.png",
+    "image": "/ui/img/g12.png"
+  },
+  "g13": {
+    "matchNum": 85,
+    "title": "🏆 Knockout Bracket G13: Switzerland vs. Algeria (2-0)",
+    "excerpt": "A historic Swiss breakthrough! Disciplined defensive bonds squeeze out Algeria's emerging market assets in Vancouver.",
+    "text": "A clinical, highly disciplined market demonstration at BC Place Vancouver! Breel Embolo opened the books with a brilliant 10th-minute opener, and Dan Ndoye executed a clinical, second-half sucker punch to secure Switzerland's first knockout victory in a staggering 88 years, proving that premium risk management wins when everything is on the line.\n\nThis historic breakthrough created a profitable session for our more conservative value investors. Edna, Hotarou, Ziggs, Babu, Trel, and Sunny all collected solid quarterly earnings by backing the Swiss defensive bonds. On the other end of the floor, speculative traders Pffq, Squally, and BimBim—who bet heavily on a highly volatile Algerian turnaround—faced complete liquidation as the final buzzer sounded.",
+    "category": "KNOCKOUT BRACKET",
+    "date": "JULY 2, 2026",
+    "thumbnail": "/ui/img/g13.png",
+    "image": "/ui/img/g13.png"
   }
 }
