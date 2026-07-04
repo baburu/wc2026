@@ -176,8 +176,19 @@ function renderTable(players) {
     return `<div class="state-msg"><span class="icon">📭</span>No scores yet.</div>`;
   }
 
+  // Compute "competition ranking" (1224 style): players tied on score share
+  // the same rank and medal, and the next distinct score skips ahead by the
+  // number of players tied above it (e.g. two 2nd places → next is 4th... but
+  // for medals specifically, we only care about golds/silvers/bronzes).
+  let lastScore = null;
+  let lastRank = 0;
+
   const rows = players.map((p, i) => {
-    const rank = i + 1;
+    if (p.score !== lastScore) {
+      lastRank = i + 1;
+      lastScore = p.score;
+    }
+    const rank = lastRank;
     const rankClass = rank <= 3 ? ` rank-${rank}` : '';
     const medal = MEDALS[rank] || '';
     const isSelected = p.name === selectedPlayer ? ' selected' : '';

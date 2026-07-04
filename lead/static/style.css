@@ -204,6 +204,13 @@ nav {
   width: 100%;
 }
 
+/* Keep the "LEADERBOARDS" heading aligned with the centered
+   leaderboard-surface box below it (which has max-width: 660px). */
+#view-standings > .section-label {
+  max-width: 660px;
+  margin: 0 auto 1.25rem;
+}
+
 #view-predictions {
   width: 100%;
 }
