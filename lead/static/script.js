@@ -18,9 +18,11 @@ const MATCHES_SHEET_CSV_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1v
 const MEDALS = { 1: '🥇', 2: '🥈', 3: '🥉' };
 const CARD_URL = 'https://baburu-wc2026-cards.hf.space/card';
 
-// 🔄 CACHE BUSTING VERSION: Increment this number (e.g. '1.0.1', '1.0.2', etc.) 
-// to instantly force all users to fetch new cards when scores or designs update.
-const CARD_VERSION = '1.0.0';
+// 🔄 CACHE BUSTING VERSION: Starts as a placeholder, then gets set automatically
+// in loadBoard() below from the live leaderboard scores. This means cards stay
+// cached as long as scores don't change, and refresh automatically the moment
+// any score updates — no manual version bumping needed.
+let CARD_VERSION = '1.0.0';
 
 const PLAYER_INFO = {
   'Babu':    { avatar: 29, user: 'baburubaburu' },
@@ -231,6 +233,15 @@ async function loadBoard(boardKey, force = false) {
     if (!data.ok) throw new Error(data.error || 'Unknown error');
 
     boardCache[boardKey] = data.players;
+
+    // Update the card cache-busting version from the live "lead" (overall)
+    // scores. As long as scores stay the same, this string stays the same,
+    // so cards keep serving from the service worker cache. The moment any
+    // score changes, this string changes too, forcing fresh card fetches.
+    if (boardKey === 'lead') {
+      CARD_VERSION = data.players.map(p => `${p.name}${p.score}`).join('-');
+    }
+
     container.innerHTML = renderTable(data.players);
     attachRowClicks();
     if (selectedPlayer) showCard(selectedPlayer);
@@ -332,6 +343,10 @@ async function preloadBoardData(boardKey) {
     const data = await res.json();
     if (!data.ok) return;
     boardCache[boardKey] = data.players;
+
+    if (boardKey === 'lead') {
+      CARD_VERSION = data.players.map(p => `${p.name}${p.score}`).join('-');
+    }
   } catch (err) {
     // Silent — this is a background warm-up, not a user-facing load.
   }
