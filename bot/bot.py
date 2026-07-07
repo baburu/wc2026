@@ -1,5 +1,6 @@
 import os
 import time
+import asyncio
 import aiohttp
 import discord
 from datetime import datetime, timezone
@@ -11,6 +12,24 @@ HIGHLIGHTLY_BASE = "https://soccer.highlightly.net"
 
 # World Cup league ID on Highlightly
 WC_LEAGUE_ID = 1635
+
+# Discord username (lowercase) -> Sheet name (source of truth: app/app.py)
+NAME_MAP = {
+    "baburubaburu": "Babu",
+    "houtarou": "Hotarou",
+    "ziggssawpuzzle": "Ziggs",
+    "trel": "Trel",
+    "scorpy": "Scorpy",
+    "pyrospower": "Pyro",
+    "edna_san": "Edna",
+    "bimbastic": "BimBim",
+    "squallyy": "Squally",
+    "hypetrain": "Hype",
+    "sunnyrainlight": "Sunny",
+    "akuma5336": "D4",
+    "nyte_zero": "Nyte",
+    "xenter0384": "Pffq",
+}
 
 intents = discord.Intents.default()
 intents.message_content = True
@@ -56,6 +75,39 @@ async def hl_get(session, path, params=None):
             set_cache(cache_key, data)
             return data
         return None
+
+async def fetch_board(session, path):
+    """Fetch a leaderboard preview; returns the players list or None on any failure.
+    Must never raise — asyncio.gather in the -vs branch relies on it."""
+    cache_key = "lead:" + path
+    cached = get_cache(cache_key)
+    if cached is not None:
+        return cached
+    try:
+        async with session.get(f"{LEADERBOARD_BASE_URL}{path}", timeout=10) as r:
+            if r.status != 200:
+                return None
+            data = await r.json()
+        if not data.get("ok"):
+            return None
+        players = data.get("players", [])
+    except Exception:
+        return None
+    set_cache(cache_key, players)
+    return players
+
+def resolve_player(query, names):
+    """Case-insensitive exact match first, then unique-prefix. Returns (name, error)."""
+    q = query.strip().lower()
+    for n in names:
+        if n.lower() == q:
+            return n, None
+    matches = [n for n in names if n.lower().startswith(q)]
+    if len(matches) == 1:
+        return matches[0], None
+    if len(matches) > 1:
+        return None, f"`{query}` matches several players: {', '.join(matches)}. Be more specific."
+    return None, f"Unknown player `{query}`. Players: {', '.join(names)}"
 
 TEAM_FLAGS = {
     "mexico": "🇲🇽", "canada": "🇨🇦", "united states": "🇺🇸", "usa": "🇺🇸",
@@ -497,6 +549,118 @@ async def on_message(message):
                                   description=f"🏆 **{board['title']}** 🏆\n{code_block}")
             await msg.delete()
             await message.channel.send(embed=embed)
+        except Exception as e:
+            await msg.edit(content=f"❌ Error: {e}")
+
+    # ── Head-to-Head ──
+    elif low == "-vs" or (low.startswith("-vs") and low[3].isspace()):
+        args = content[3:].split()
+        if not args:
+            await message.channel.send("Usage: `-vs <player1> <player2>` — or `-vs <player>` to face them yourself.")
+            return
+        if len(args) > 2:
+            await message.channel.send("❌ Too many names. Usage: `-vs <player1> <player2>`")
+            return
+        if len(args) == 1:
+            me = NAME_MAP.get(message.author.name.lower())
+            if not me:
+                await message.channel.send("❌ I don't know which player you are — use `-vs <player1> <player2>`.")
+                return
+            queries = [me, args[0]]
+        else:
+            queries = args
+        msg = await message.channel.send("⏳ Fetching head-to-head...")
+        try:
+            async with aiohttp.ClientSession() as session:
+                overall, b1, b2, b3, b4 = await asyncio.gather(
+                    fetch_board(session, "/preview"),
+                    fetch_board(session, "/m1/preview"),
+                    fetch_board(session, "/m2/preview"),
+                    fetch_board(session, "/m3/preview"),
+                    fetch_board(session, "/m4/preview"),
+                )
+            if not overall:
+                await msg.edit(content="❌ Couldn't fetch the leaderboard. Try again in a minute.")
+                return
+            names = [p["name"] for p in overall]
+            p1, err = resolve_player(queries[0], names)
+            if err:
+                await msg.edit(content=f"❌ {err}")
+                return
+            p2, err = resolve_player(queries[1], names)
+            if err:
+                await msg.edit(content=f"❌ {err}")
+                return
+            if p1 == p2:
+                await msg.edit(content=f"🪞 {p1} vs {p1}... they seem evenly matched. Pick a different opponent!")
+                return
+
+            totals = {p["name"]: p["score"] for p in overall}
+            t1, t2 = totals[p1], totals[p2]
+            # Competition ranking: tied totals share a rank
+            r1 = 1 + sum(1 for p in overall if p["score"] > t1)
+            r2 = 1 + sum(1 for p in overall if p["score"] > t2)
+
+            rows = []
+            for label, board in (("M1", b1), ("M2", b2), ("M3", b3), ("M4", b4)):
+                scores = {p["name"]: p["score"] for p in board} if board else {}
+                rows.append((label, scores.get(p1), scores.get(p2)))
+            # A matchday counts only when both players have a score
+            w1 = sum(1 for _, a, b in rows if a is not None and b is not None and a > b)
+            w2 = sum(1 for _, a, b in rows if a is not None and b is not None and b > a)
+
+            colw = max(len(p1), len(p2), 6)
+            bar = "▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬"
+            lines = [bar]
+            lines.append(f"{'':<6}\u001b[1;34m{p1:>{colw}}\u001b[0m     \u001b[1;31m{p2:>{colw}}\u001b[0m")
+            for label, a, b in rows + [("TOT", t1, t2)]:
+                if label == "TOT":
+                    lines.append(bar)
+                if a is None or b is None:
+                    c1 = "—" if a is None else str(a)
+                    c2 = "—" if b is None else str(b)
+                    mark, k1, k2 = " ", "0", "0"
+                elif a > b:
+                    c1, c2, mark, k1, k2 = str(a), str(b), "◀", "1;33", "0"
+                elif b > a:
+                    c1, c2, mark, k1, k2 = str(a), str(b), "▶", "0", "1;33"
+                else:
+                    c1, c2, mark, k1, k2 = str(a), str(b), "=", "0", "0"
+                # Pad plain text first, then wrap in ANSI — keeps columns aligned
+                cell1 = f"\u001b[{k1}m{c1:>{colw}}\u001b[0m"
+                cell2 = f"\u001b[{k2}m{c2:>{colw}}\u001b[0m"
+                lines.append(f"{label:<6}{cell1}  {mark}  {cell2}")
+            lines.append(f"{'RANK':<6}\u001b[1;34m{'#' + str(r1):>{colw}}\u001b[0m     \u001b[1;34m{'#' + str(r2):>{colw}}\u001b[0m")
+            lines.append(bar)
+            code_block = "```ansi\n" + "\n".join(lines) + "\n```"
+
+            if t1 == t2:
+                if w1 == w2:
+                    verdict = "🤝 **Dead even** — nothing between them"
+                else:
+                    edge = p1 if w1 > w2 else p2
+                    verdict = f"⚖️ **Level on points** — {edge.upper()} edges matchdays {max(w1, w2)}-{min(w1, w2)}"
+            else:
+                leader, lw, ow = (p1, w1, w2) if t1 > t2 else (p2, w2, w1)
+                gap = abs(t1 - t2)
+                if lw > ow:
+                    verdict = f"⚔️ **{leader.upper()} leads {lw}-{ow} (+{gap} pts)**"
+                elif lw < ow:
+                    verdict = f"⚔️ **{leader.upper()} up {gap} pts** despite trailing matchdays {lw}-{ow}"
+                elif lw == 0:
+                    verdict = f"⚔️ **{leader.upper()} ahead by {gap} pts**"
+                else:
+                    verdict = f"⚔️ **{leader.upper()} ahead by {gap} pts** (matchdays level {lw}-{ow})"
+
+            embed = discord.Embed(title="WORLD CUP 2026", color=16763904,
+                                  description=f"⚔️ **{p1.upper()} vs {p2.upper()}** ⚔️\n{code_block}\n{verdict}")
+            # Send first, delete the spinner second — if the send fails,
+            # the except below can still edit the spinner
+            await message.channel.send(embed=embed)
+            try:
+                await msg.delete()
+            except Exception:
+                pass  # embed already delivered; spinner may have been deleted externally
         except Exception as e:
             await msg.edit(content=f"❌ Error: {e}")
 
@@ -1197,6 +1361,7 @@ async def on_message(message):
     elif content == "-help":
         embed = discord.Embed(title="⚽ WC2026 Bot Commands", color=0x1a3a2a)
         embed.add_field(name="Leaderboard", value="`-lead` `-m1` `-m2` `-m3` `-m4`", inline=False)
+        embed.add_field(name="-vs <p1> [p2]", value="Head-to-head duel — e.g. `-vs babu pyro` or `-vs zig` (you vs Ziggs)", inline=False)
         embed.add_field(name="-tm [yday/tmrw]", value="World Cup matches — e.g. `-tm` or `-tm yday`", inline=False)
         embed.add_field(name="-next [team]", value="Next upcoming match with live countdown timestamp — e.g. `-next` or `-next Brazil`", inline=False)
         embed.add_field(name="-live [team]", value="Live matches with goal scorers — e.g. `-live` or `-live France`", inline=False)
