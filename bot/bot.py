@@ -1,7 +1,10 @@
 import os
 import time
+import asyncio
+import threading
 import aiohttp
 import discord
+from aiohttp import web
 from datetime import datetime, timezone
 
 TOKEN = os.environ.get("DISCORD_BOT_TOKEN")
@@ -1207,6 +1210,31 @@ async def on_message(message):
         embed.add_field(name="-bracket <round>", value="`r32` `r16` `qf` `sf` `final` `3rd`", inline=False)
         await message.channel.send(embed=embed)
 
+
+# ── Tiny health-check web server ──
+# Hugging Face Spaces (Docker) expect the container to listen on a port.
+# This also gives you a URL you can ping from an uptime service to keep
+# the free-tier Space from going to sleep.
+async def _health(request):
+    return web.Response(text="ok")
+
+def _run_health_server():
+    loop = asyncio.new_event_loop()
+    asyncio.set_event_loop(loop)
+
+    async def _start():
+        app = web.Application()
+        app.router.add_get("/", _health)
+        runner = web.AppRunner(app)
+        await runner.setup()
+        port = int(os.environ.get("PORT", 7860))  # Render sets PORT; HF/local fall back to 7860
+        site = web.TCPSite(runner, "0.0.0.0", port)
+        await site.start()
+
+    loop.run_until_complete(_start())
+    loop.run_forever()
+
+threading.Thread(target=_run_health_server, daemon=True).start()
 
 if TOKEN:
     client.run(TOKEN)
