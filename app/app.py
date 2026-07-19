@@ -29,7 +29,7 @@ SCORE_COLORS = {
     "bronze":  (120, 65, 25, 255),   # bronze/brown, matches the bronze.png border
     "silver":  (110, 110, 120, 255), # silver/grey, matches the silver.png border
     "gold":    (150, 115, 10, 255),  # gold, matches the gold.png border
-    "wc2026":  (100, 20, 40, 255),   # placeholder, matches the wc2026.png border
+    "wc2026":  (20, 90, 40, 255),    # dark green
 }
 
 # Discord username (lowercase) -> Sheet name
