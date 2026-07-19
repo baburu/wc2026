@@ -15,6 +15,10 @@ BG_NAMES = {
     "default": "base.png",
     "gc":      "gc.png",
     "m":       "m.png",
+    "bronze":  "bronze.png",
+    "silver":  "silver.png",
+    "gold":    "gold.png",
+    "wc2026":  "wc2026.png",
 }
 
 # Score text color per background key, matching each card's border/theme color
@@ -22,6 +26,10 @@ SCORE_COLORS = {
     "default": (100, 20, 40, 255),
     "gc":      (20, 70, 160, 255),   # blue, matches the gc.png border
     "m":       (150, 20, 30, 255),   # red, matches the m.png border
+    "bronze":  (120, 65, 25, 255),   # bronze/brown, matches the bronze.png border
+    "silver":  (110, 110, 120, 255), # silver/grey, matches the silver.png border
+    "gold":    (150, 115, 10, 255),  # gold, matches the gold.png border
+    "wc2026":  (100, 20, 40, 255),   # placeholder, matches the wc2026.png border
 }
 
 # Discord username (lowercase) -> Sheet name
@@ -91,7 +99,7 @@ def get_font(size):
             return ImageFont.truetype(path, size)
     return ImageFont.load_default(size=size)
 
-VALID_BADGES = {"m1", "m2", "m3", "wc26"}
+VALID_BADGES = {"m1", "m2", "m3", "m4", "wc26", "1st", "2nd", "3rd", "thanks"}
 
 # --- Badge layout config: edit these to resize/reposition the badge row ---
 BADGE_SIZE   = 80    # width (px) each badge is scaled into on the 400x600 card
